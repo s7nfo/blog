@@ -7,7 +7,7 @@ One of my favorite little fixes I've done at Stripe unrelated to my day-to-day
 work was fixing an accidental O(n²) behavior of
 [Subprocess#communicate](https://github.com/stripe/subprocess/blob/master/lib/subprocess.rb#L428)
 that made communicating 1GB worth of data ~1000 times slower than it needed to
-be.
+be. This ended up reducing runtime of several batch jobs from days to minutes/hours, among other things.
 
 The fix itself was this fun one-liner:
 
