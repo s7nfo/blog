@@ -25,6 +25,9 @@ url: "https://mattstuchlik.com" # the base hostname & protocol for your site, e.
 twitter_username: s7nfo
 github_username:  s7nfo
 
+# Google Analytics
+google_analytics: G-XCN2GPHPDW
+
 # Build settings
 theme: minima
 plugins:
