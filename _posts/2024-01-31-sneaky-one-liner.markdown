@@ -38,7 +38,7 @@ def communicate(input=nil, timeout_s=nil)
         # write it to stdin...
         written = @stdin.write_nonblock(input)
         # and strip the amount written.
->       input = input[written..input.length] # Slow!!!
+>       input[0...written] = '' # Slow!!!
     end
 end
 ```
