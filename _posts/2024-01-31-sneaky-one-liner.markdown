@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Accidental O(n²) in Ruby"
+title:  "This sneaky 1-line change sped up subprocess#communicate 1000x+"
 ---
 
 One of my favorite little fixes I've done at Stripe unrelated to my day-to-day
