@@ -108,24 +108,24 @@ Here's a detailed `ltrace` of the slow version:
 
 ```
 > rb_str_aset_m(2, 0x7f8f7eeff060, 0x7f8f7b6d49f0, 0x5583934d8dd0 <unfinished ...>
-  str_strlen(0x7f8f7b6d49f0, 0, 0x7f8f7b6d49f0, 0x5583934d8dd0)
-  rb_range_beg_len(0x7f8f7b6d5210, 0x7ffc9f3a6ec8, 0x7ffc9f3a6ed0, 0xe4241 <unfinished ...>
-  rb_obj_is_kind_of(0x7f8f7b6d5210, 0x7f8f7ebd26c0, 0x7ffc9f3a6ed0, 0xe4241)
-  rb_str_update(0x7f8f7b6d49f0, 0, 0xffff, 0x7f8f7b6d4900 <unfinished ...>
-  rb_string_value(0x7ffc9f3a6e58, 0, 0xffff, 0x7f8f7b6d4900)
-  rb_enc_check(0x7f8f7b6d49f0, 0x7f8f7b6d4900, 5, 0x7f8f7b6d4900 <unfinished ...>
-  rb_enc_get_index(0x7f8f7b6d49f0, 0x7f8f7b6d4900, 5, 0x7f8f7b6d4900)
-  rb_enc_get_index(0x7f8f7b6d4900, 0x7f8f7b6d4900, 5, 0x7f8f7b6d4900)
-  str_strlen(0x7f8f7b6d49f0, 0x558394ea4ec0, 0, 1)
-  str_modify_keep_cr(0x7f8f7b6d49f0, 0x558394ea4ec0, 0, 1 <unfinished ...>
-  rb_enc_get(0x7f8f7b6d49f0, 0x558394ea4ec0, 5, 1 <unfinished ...>
-  rb_enc_get_index(0x7f8f7b6d49f0, 0x558394ea4ec0, 5, 1)
-  str_make_independent_expand(0x7f8f7b6d49f0, 0xe4241, 0, 1 <unfinished ...>
-  ruby_xmalloc2(0xe4242, 1, 0xe4242, 1 <unfinished ...>
-  objspace_xmalloc0(0x558394e9d800, 0xe4242, 0, 1 <unfinished ...>
-  malloc(934466)
-  malloc_usable_size(0x7f8f7b4c6010, 0xe4242, 0xe5002, 0x7f8f7b4c6010)
-> memcpy(0x7f8f7b4c6010, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"..., 934465)
+    str_strlen(0x7f8f7b6d49f0, 0, 0x7f8f7b6d49f0, 0x5583934d8dd0)
+    rb_range_beg_len(0x7f8f7b6d5210, 0x7ffc9f3a6ec8, 0x7ffc9f3a6ed0, 0xe4241 <unfinished ...>
+      rb_obj_is_kind_of(0x7f8f7b6d5210, 0x7f8f7ebd26c0, 0x7ffc9f3a6ed0, 0xe4241)
+    rb_str_update(0x7f8f7b6d49f0, 0, 0xffff, 0x7f8f7b6d4900 <unfinished ...>
+    rb_string_value(0x7ffc9f3a6e58, 0, 0xffff, 0x7f8f7b6d4900)
+    rb_enc_check(0x7f8f7b6d49f0, 0x7f8f7b6d4900, 5, 0x7f8f7b6d4900 <unfinished ...>
+      rb_enc_get_index(0x7f8f7b6d49f0, 0x7f8f7b6d4900, 5, 0x7f8f7b6d4900)
+      rb_enc_get_index(0x7f8f7b6d4900, 0x7f8f7b6d4900, 5, 0x7f8f7b6d4900)
+    str_strlen(0x7f8f7b6d49f0, 0x558394ea4ec0, 0, 1)
+    str_modify_keep_cr(0x7f8f7b6d49f0, 0x558394ea4ec0, 0, 1 <unfinished ...>
+    rb_enc_get(0x7f8f7b6d49f0, 0x558394ea4ec0, 5, 1 <unfinished ...>
+      rb_enc_get_index(0x7f8f7b6d49f0, 0x558394ea4ec0, 5, 1)
+    str_make_independent_expand(0x7f8f7b6d49f0, 0xe4241, 0, 1 <unfinished ...>
+    ruby_xmalloc2(0xe4242, 1, 0xe4242, 1 <unfinished ...>
+      objspace_xmalloc0(0x558394e9d800, 0xe4242, 0, 1 <unfinished ...>
+        malloc(934466)
+        malloc_usable_size(0x7f8f7b4c6010, 0xe4242, 0xe5002, 0x7f8f7b4c6010)
+>   memcpy(0x7f8f7b4c6010, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"..., 934465)
 ```
 
 <br>
@@ -172,7 +172,9 @@ irb(main):007" s = "foo"
 irb(main):008" s = s[2..]
 irb(main):009> END
 => "s = \"foo\"\ns = s[2..]\n"
+
 irb(main):010> puts RubyVM::InstructionSequence::compile(code).disasm
+
 == disasm: #<ISeq:<compiled>@<compiled>:1 (1,0)-(2,10)>
 local table (size: 1, argc: 0 [opts: 0, rest: -1, post: 0, block: -1, kw: -1@-1, kwrest: -1])
 [ 1] s@0
@@ -194,26 +196,26 @@ And the associated `ltrace`:
 
 ```
 > rb_str_aref_m(1, 0x7f78c0cff060, 0x7f78bd4cc948, 0x555ed63d7320 <unfinished ...>
-  str_strlen(0x7f78bd4cc948, 0, 0x7f78bd4cc948, 0x555ed63d7320)                                                                = 0xe4241
-  rb_range_beg_len(0x7f78bd4cc8f8, 0x7ffff83c3248, 0x7ffff83c3250, 0xe4241 <unfinished ...>
-  rb_obj_is_kind_of(0x7f78bd4cc8f8, 0x7f78c09c66a8, 0x7ffff83c3250, 0xe4241)                                                   = 20
-  str_substr(0x7f78bd4cc948, 0xffff, 0xd4242, 1 <unfinished ...>
-  rb_str_subpos(0x7f78bd4cc948, 0xffff, 0x7ffff83c31d0, 1 <unfinished ...>
-  get_encoding(0x7f78bd4cc948, 0xffff, 0, 1 <unfinished ...>
-  get_actual_encoding(1, 0x7f78bd4cc948, 1, 1 <unfinished ...>
-  rb_enc_from_index(1, 0x7f78bd4cc948, 1, 1)                                                                                   = 0x555ed6b4cec0
-  rb_enc_get(0x7f78bd4cc948, 0x7f78bd4cc948, 0xffff, 1 <unfinished ...>
-  rb_enc_get_index(0x7f78bd4cc948, 0x7f78bd4cc948, 0xffff, 1)                                                                  = 1
-  rb_str_dup_frozen(0x7f78bd4cc948, 0x7f78bd4cc948, 0x7f78bd4cc948, 1 <unfinished ...>
-  rb_obj_class(0x7f78bd4cc948, 0x7f78bd4cc948, 5, 1)                                                                           = 0x7f78c09b2428
-  str_new_frozen_buffer(0x7f78c09b2428, 0x7f78bd4cc948, 1, 1 <unfinished ...>
-  rb_wb_protected_newobj_of(0x7f78c09b2428, 5, 40, 0xffff)                                                                     = 0x7f78bd4cc8d0
-> str_replace_shared_without_enc.isra.0(0x7f78bd4cc8d0, 0x7f78bd4cc970, 0x7f78bd4cc8d0, 0x555ed6b460e0 <unfinished ...>
+    str_strlen(0x7f78bd4cc948, 0, 0x7f78bd4cc948, 0x555ed63d7320)
+    rb_range_beg_len(0x7f78bd4cc8f8, 0x7ffff83c3248, 0x7ffff83c3250, 0xe4241 <unfinished ...>
+      rb_obj_is_kind_of(0x7f78bd4cc8f8, 0x7f78c09c66a8, 0x7ffff83c3250, 0xe4241)
+    str_substr(0x7f78bd4cc948, 0xffff, 0xd4242, 1 <unfinished ...>
+    rb_str_subpos(0x7f78bd4cc948, 0xffff, 0x7ffff83c31d0, 1 <unfinished ...>
+      get_encoding(0x7f78bd4cc948, 0xffff, 0, 1 <unfinished ...>
+        get_actual_encoding(1, 0x7f78bd4cc948, 1, 1 <unfinished ...>
+          rb_enc_from_index(1, 0x7f78bd4cc948, 1, 1)
+    rb_enc_get(0x7f78bd4cc948, 0x7f78bd4cc948, 0xffff, 1 <unfinished ...>
+      rb_enc_get_index(0x7f78bd4cc948, 0x7f78bd4cc948, 0xffff, 1)
+    rb_str_dup_frozen(0x7f78bd4cc948, 0x7f78bd4cc948, 0x7f78bd4cc948, 1 <unfinished ...>
+    rb_obj_class(0x7f78bd4cc948, 0x7f78bd4cc948, 5, 1)
+    str_new_frozen_buffer(0x7f78c09b2428, 0x7f78bd4cc948, 1, 1 <unfinished ...>
+    rb_wb_protected_newobj_of(0x7f78c09b2428, 5, 40, 0xffff)
+>   str_replace_shared_without_enc.isra.0(0x7f78bd4cc8d0, 0x7f78bd4cc970, 0x7f78bd4cc8d0, 0x555ed6b460e0 <unfinished ...>
 ```
 
 <br>
 
-No `memcpy` in sight! I believe `str_replace_shared_without_enc` is where the optimization happens, but frankly I find `string.c` quite confusing and not particularly well documented, so who knows!
+No `memcpy` in sight! I believe `str_replace_shared_without_enc` is where the optimization happens, but frankly I find Ruby's `string.c` quite confusing and not particularly well documented, so who knows!
 
 # Final Thoughts
 
