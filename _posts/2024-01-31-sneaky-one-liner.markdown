@@ -222,3 +222,7 @@ No `memcpy` in sight! I believe `str_replace_shared_without_enc` is where the op
 While the change above works and I find the one-liner nature of it very fun, it's probably not the best way of fixing this, since it relies on an optimization that could stop working. One should probably implement the pointer moving on their own.
 
 If you understand `string.c` better I'd be very curious to know why the optimization triggers in one case but not the other. Is it a bug or a feature? [Let me know!](https://twitter.com/s7nfo)
+
+**Backlinks**
+
+Discussions on [/r/ruby](https://www.reddit.com/r/ruby/comments/1ah9w70/this_sneaky_1line_change_sped_up/) and [/r/programming](https://www.reddit.com/r/programming/comments/1ahbfet/this_sneaky_1line_change_sped_up/) subreddits.
