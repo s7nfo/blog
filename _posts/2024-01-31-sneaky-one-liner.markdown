@@ -3,6 +3,8 @@ layout: post
 title:  "This sneaky 1-line change sped up subprocess#communicate 1000x+"
 ---
 
+> Note: The performance issue discussed here has been fixed in Ruby 3.2!
+
 One of my favorite little fixes I've done at Stripe unrelated to my day-to-day
 work was fixing an accidental O(n²) behavior of
 [Subprocess#communicate](https://github.com/stripe/subprocess/blob/master/lib/subprocess.rb#L428)
