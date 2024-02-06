@@ -72,4 +72,4 @@ lower loop overhead, but the 2 and 4 variable version speed up considerably more
 
 Unsurprisingly these differences disappear when I use `-O3`.
 
-Pretty cool!
+Pretty cool! Wish I had a more precise understanding of why this happen though.
