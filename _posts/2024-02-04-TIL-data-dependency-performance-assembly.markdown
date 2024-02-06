@@ -71,7 +71,7 @@ sum:
         ret                         
 ```
 
-Would be slower than this multi-register one.
+Would be measurably slower than this multi-register one.
 
 ```nasm
 sum:
