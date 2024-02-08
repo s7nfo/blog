@@ -26,7 +26,8 @@ Hello
 ```
 
 45,713,378 is how many instructions it takes to initialize Python, print Hello
-and tear the whole thing down again. I want more precision!
+and tear the whole thing down again. I want more precision! I want to only
+measure that single line of code.
 
 Hence this little tool:
 
@@ -42,14 +43,14 @@ print(c.end())
 # Sample(instruction_count=17181, time_enabled_ns=92853)
 ```
 
-Why would you want this? I was mostly just curious, but that's not to say
-it can't be useful: let's say you really, really care about performance of your
-`foo` and you want to have a test that fails if it gets slower than a threshold.
-So you `time.time()` it, assert less than a threshold and... you realize your
-CI box is running a ton of concurrent tests and the timing is therefore very
+Why would you want this? I was mostly just curious, but that's not to say it
+can't be useful: let's say you really, really care about performance of your
+`foo` and you want to have a regression test that fails if it gets slower than
+a threshold.  So you `time.time()` it, assert less than a threshold and... you
+realize your CI box is running a ton of concurrent tests and the timing is very
 noisy.
 
-Not (as much) instruction count!
+Not (as much) the instruction count!
 
 ![Cirron plot](/assets/cirron_plot.png)
 
@@ -57,7 +58,8 @@ This graph shows distribution of time measurements of the same piece of code
 using `time.time()` and `time.perf_counter()` and the instruction count
 measured with Cirron, scaled to fit with the time measurement[^0]. Note how
 **impeccably tight** the instruction count distribution is (also note though
-how it's *not* completely constant).
+how [it's *not* completely
+constant](https://hackmd.io/sH315lO2RuicY-SEt7ynGA?view#Hardware-performance-counter-support-via-rdpmc)).
 
 This is not to say instruction count is the be-all and end-all. Equal instruction
 counts can have wildly different wall clock timings, etc. Still, it's a useful tool
