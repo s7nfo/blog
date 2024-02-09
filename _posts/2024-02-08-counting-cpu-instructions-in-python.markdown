@@ -72,4 +72,8 @@ better already and you'd find it useful if this was on PyPI or exposed more
 perf events or worked with $LANGUAGE, etc., [let me
 know](https://twitter.com/s7nfo).
 
+**Backlinks**
+
+Discussions on [/r/python](https://www.reddit.com/r/Python/comments/1am6j5w/counting_cpu_instructions_in_python/) and [/r/programming](https://www.reddit.com/r/programming/comments/1am6m4j/counting_cpu_instructions_in_python/) subreddits.
+
 [^0]: I'm sure comparing the two this way is completely incorrect, this is just me invoking the [Cunningham's Law](https://meta.wikimedia.org/wiki/Cunningham%27s_Law).
