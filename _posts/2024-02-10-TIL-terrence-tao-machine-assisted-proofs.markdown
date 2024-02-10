@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Terrence Tao on Machine Assisted Proofs"
+title:  "TIL: Terrence Tao on Machine Assisted Proofs"
 ---
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/AayZuuDDKP0?si=lNQKfWDVNUPtVLOR" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
