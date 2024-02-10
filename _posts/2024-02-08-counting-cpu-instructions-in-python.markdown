@@ -3,7 +3,7 @@ layout: post
 title:  "Counting CPU Instructions in Python"
 ---
 
-Did you know it takes about 17,000 CPU instructions to `print("Hello")` in Python? And that it takes ~2 billion of them to import `seaborn`?
+Did you know it takes about 17,000 CPU instructions[^0] to `print("Hello")` in Python? And that it takes ~2 billion of them to import `seaborn`?
 
 Today I was playing with [perf_event_open](https://man7.org/linux/man-pages/man2/perf_event_open.2.html), a linux syscall that lets you set up all kinds of performance monitoring. One way to interact with the system is through the `perf` CLI tool. The problem?
 
@@ -56,7 +56,7 @@ Not (as much) the instruction count!
 
 This graph shows distribution of time measurements of the same piece of code
 using `time.time()` and `time.perf_counter()` and the instruction count
-measured with Cirron, scaled to fit with the time measurement[^0]. Note how
+measured with Cirron, scaled to fit with the time measurement[^1]. Note how
 **impeccably tight** the instruction count distribution is (also note though
 how [it's *not* completely
 constant](https://hackmd.io/sH315lO2RuicY-SEt7ynGA?view#Hardware-performance-counter-support-via-rdpmc)).
@@ -76,4 +76,6 @@ know](https://twitter.com/s7nfo).
 
 Discussions on [/r/python](https://www.reddit.com/r/Python/comments/1am6j5w/counting_cpu_instructions_in_python/) and [/r/programming](https://www.reddit.com/r/programming/comments/1am6m4j/counting_cpu_instructions_in_python/) subreddits.
 
-[^0]: I'm sure comparing the two this way is completely incorrect, this is just me invoking the [Cunningham's Law](https://meta.wikimedia.org/wiki/Cunningham%27s_Law).
+[^0]: Since writting this I have [upgraded](https://github.com/s7nfo/Cirron/commit/2118a956131f2f65482a84c43953965aa6166f23) Cirron to substract its own overhead; it now measures `print` at ~9,000 instructions.
+
+[^1]: I'm sure comparing the two this way is completely incorrect, this is just me invoking the [Cunningham's Law](https://meta.wikimedia.org/wiki/Cunningham%27s_Law).
