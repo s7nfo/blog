@@ -1,11 +1,11 @@
 ---
 layout: post
-title:  "Tracing syscalls in Python"
+title:  "Tracing System Calls in Python"
 ---
 
 Last time we [counted CPU
 instructions](http://blog.mattstuchlik.com/2024/02/08/counting-cpu-instructions-in-python.html),
-let's look at [syscalls](https://en.wikipedia.org/wiki/System_call) now!
+lets look at [syscalls](https://en.wikipedia.org/wiki/System_call) now!
 
 I'll show you a little tiny tool I added to
 [Cirron](https://github.com/s7nfo/Cirron) that let's you see exactly what
@@ -57,7 +57,7 @@ print(len(trace))
 ```
 
 Turns out importing Seaborn takes ~20k syscalls! That's obviously too many to
-just print out, so what's a better way to analyze what's it doing?
+just print out, so what's a better way to analyze what it's doing?
 
 ## Visualizing traces with Perfetto
 
@@ -83,4 +83,4 @@ This gets you a file you can open with Perfetto. I'm not going to describe all i
 
 ![Perfetto](/assets/perfetto.png)
 
-[^0]: If you try this yourself you'll see couple more calls, but those are related to shutting down `strace` after we're done, not to the traced code itself.
+[^0]: If you try this yourself you'll see a couple more calls, but those are related to shutting down `strace` after we're done, not to the traced code itself.
