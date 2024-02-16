@@ -25,12 +25,12 @@ print(trace)
 # write(1, "Hello\n", 6) = 6 <0.000150s>
 ```
 
-You can see[^0] `print` uses
-[write](https://man7.org/linux/man-pages/man2/write.2.html) to write to stdout
-(that's what the `1` stands for) the string `"Hello\n"` and asks it to write at
-most `6` bytes. Write then returns `6`, meaning it managed to write all the bytes we
-asked it to. You can also see it took 0.00015s or 150μs (just the `write` call, not the whole `print`
-statement).
+You can see[^0] `print` uses only a single
+[write](https://man7.org/linux/man-pages/man2/write.2.html) to write the string
+`"Hello\n"` to stdout (that's what the `1` stands for) and asks it to write at
+most `6` bytes. Write then returns `6`, meaning it managed to write all the
+bytes we asked it to. You can also see it took 0.00015s or 150μs (that's just the
+`write` call, not the whole `print` statement).
 
 Pretty cool!
 
@@ -82,5 +82,9 @@ This gets you a file you can open with Perfetto. I'm not going to describe all i
 <br>
 
 ![Perfetto](/assets/perfetto.png)
+
+<br>
+
+I was surprised to find it uses 4 threads, which mostly spend time looking up files and reading them, but one of the threads seems to be very curious about your CPU details!
 
 [^0]: If you try this yourself you'll see a couple more calls, but those are related to shutting down `strace` after we're done, not to the traced code itself.
