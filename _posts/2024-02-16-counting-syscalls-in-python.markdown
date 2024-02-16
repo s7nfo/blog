@@ -5,10 +5,10 @@ title:  "Tracing System Calls in Python"
 
 Last time we [counted CPU
 instructions](http://blog.mattstuchlik.com/2024/02/08/counting-cpu-instructions-in-python.html),
-lets look at [syscalls](https://en.wikipedia.org/wiki/System_call) now!
+let's look at [syscalls](https://en.wikipedia.org/wiki/System_call) now!
 
 I'll show you a little tiny tool I added to
-[Cirron](https://github.com/s7nfo/Cirron) that let's you see exactly what
+[Cirron](https://github.com/s7nfo/Cirron) that lets you see exactly what
 syscalls a piece of Python code is calling and how to analyze the trace more effectively.
 
 Let's start with `print("Hello")` as before:
