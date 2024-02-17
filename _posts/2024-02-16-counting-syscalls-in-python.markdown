@@ -19,7 +19,7 @@ t = Tracer()
 
 t.start()
 print("Hello")
-trace = t.end()
+trace = t.stop()
 
 print(trace)
 # write(1, "Hello\n", 6) = 6 <0.000150s>
@@ -50,7 +50,7 @@ t = Tracer()
 
 t.start()
 import seaborn
-trace = t.end()
+trace = t.stop()
 
 print(len(trace))
 # 20462
