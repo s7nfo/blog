@@ -34,12 +34,10 @@ Hence this little tool:
 ```python
 from cirron import Collector
 
-c = Collector()
-c.start()
+with Collector() as c:
+    print("Hello")
 
-print("Hello")
-
-print(c.end())
+print(c.counters)
 # Sample(instruction_count=17181, time_enabled_ns=92853)
 ```
 

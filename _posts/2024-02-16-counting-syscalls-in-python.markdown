@@ -15,13 +15,10 @@ Let's start with `print("Hello")` as before:
 ```python
 from cirron import Tracer
 
-t = Tracer()
+with Tracer() as t
+    print("Hello")
 
-t.start()
-print("Hello")
-trace = t.end()
-
-print(trace)
+print(t.trace)
 # write(1, "Hello\n", 6) = 6 <0.000150s>
 ```
 
@@ -46,13 +43,10 @@ Let's trace `import seaborn` now:
 ```python
 from cirron import Tracer
 
-t = Tracer()
+with Tracer() as t:
+    import seaborn
 
-t.start()
-import seaborn
-trace = t.end()
-
-print(len(trace))
+print(len(t.trace))
 # 20462
 ```
 
@@ -72,7 +66,7 @@ from cirron import to_tef
 
 (...)
 
-open("/tmp/trace", "w").write(to_tef(trace))
+open("/tmp/trace", "w").write(to_tef(t.trace))
 ```
 
 <br>
