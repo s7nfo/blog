@@ -81,4 +81,8 @@ This gets you a file you can open with Perfetto. I'm not going to describe all i
 
 I was surprised to find it uses 4 threads, which mostly spend time looking up files and reading them, but one of the threads seems to be very curious about your CPU details!
 
+**Backlinks**
+
+Discussions on [HackerNews](https://news.ycombinator.com/item?id=39402868) and [/r/Python](https://www.reddit.com/r/Python/comments/1asjcnm/recording_and_visualising_the_20k_system_calls_it/).
+
 [^0]: If you try this yourself you'll see a couple more calls, but those are related to shutting down `strace` after we're done, not to the traced code itself.
