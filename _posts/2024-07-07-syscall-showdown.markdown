@@ -288,3 +288,5 @@ puts "Hello"
 <a href="https://linux.die.net/man/2/write">write</a>
 
 <a href="https://linux.die.net/man/2/writev">writev</a> is apparently atomic, so it should provide more reasonable output when multiple threads are writing stuff.
+
+[^0]: [https://github.com/python/cpython/blob/main/Lib/_pyio.py#L247](https://github.com/python/cpython/blob/main/Lib/_pyio.py#L247)
