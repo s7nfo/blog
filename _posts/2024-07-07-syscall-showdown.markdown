@@ -3,11 +3,13 @@ layout: post
 title:  "Syscall Showdown: Python vs. Ruby"
 ---
 
-[Cirron](https://github.com/s7nfo/Cirron) recently gained the ability to trace syscalls and record performance counters for Ruby code, like it already could do for Python (more [here](http://blog.mattstuchlik.com/2024/02/08/counting-cpu-instructions-in-python.html) and [here](http://blog.mattstuchlik.com/2024/02/16/counting-syscalls-in-python.html)). To put it through its paces I've compared what syscalls each language uses for several common patterns.
+We've released a new version of [Cirron](https://github.com/s7nfo/Cirron) that can now trace syscalls and record performance counters for individual lines of Ruby code, just like it already could do for Python (more [here](http://blog.mattstuchlik.com/2024/02/08/counting-cpu-instructions-in-python.html) and [here](http://blog.mattstuchlik.com/2024/02/16/counting-syscalls-in-python.html)). It makes it very easy to quickly inspect what's happening in any section of your code and even assert what should be happening in tests, for example.
+
+To put it through its paces I've compared what syscalls each language uses for several common patterns: File IO, generating random numbers, telling time and even just printing a string.
 
 ### File IO
 
-Let's start with something a little surprising right away. Here are the snippets under investigation, I'll be omitting the Cirron setup from the snippets later on.
+Let's start with something a little surprising right away. Here are the snippets under investigation, simply writing a string to a file (I'll be omitting the Cirron setup from the snippets later on):
 
 ```python
 # python
@@ -25,7 +27,7 @@ t = Cirron::tracer do
 end
 ```
 
-And here then, are the system calls each language makes. I've highlighted the calls that aren't made by the other language and added approximate time spent in each on my system:
+And here then, are the system calls each language makes. I've highlighted calls that aren't made by the other language and added approximate time spent in each call on my system:
 
 <style>
     .highlight { background-color: #ffffcc; }
@@ -107,17 +109,17 @@ And here then, are the system calls each language makes. I've highlighted the ca
     </tr>
 </table>
 
-Both our competitors use <a href="https://linux.die.net/man/2/openat">openat</a> to open `test.txt` in current directory.
+Both start off with <a href="https://linux.die.net/man/2/openat">openat</a> to open `test.txt` in the current directory.
 Python then, unlike Ruby, uses [newfstat](http://man.he.net/man2/newfstatat) to figure out what buffer size to use by looking at `st_blksize`[^0].
-Both languages then use <a href="https://linux.die.net/man/2/ioctl">ioctl</a> to figure out whether the `fd` is a TTY.
+Both languages then use <a href="https://linux.die.net/man/2/ioctl">ioctl</a> to figure out whether the file descriptor is a TTY.
 
-So far as expected, but then... Python decides to [lseek](https://linux.die.net/man/2/lseek) to the start of the file twice. This doesn't seem strictly necessary, but a quick look through the cPython codebase didn't reveal why this is happening. If you know, let me know!
+So far as expected, but then... Python decides to [lseek](https://linux.die.net/man/2/lseek) to the start of the file twice. This doesn't seem strictly necessary and a quick look through the cPython codebase didn't reveal why this is happening. If you know, let me know!
 
 Anyway: finally both languages use <a href="https://linux.die.net/man/2/write">write</a> to write our string and <a href="https://linux.die.net/man/2/close">close</a> to close the file handle.
 
 
 
-Now let's look at reading a file instead:
+Let's look at reading a file now:
 
 ```python
 # python
@@ -225,11 +227,11 @@ content = File.read("test.txt")
     </tr>
 </table>
 
-Nothing terribly surprising here. Python still doing its double lseek and Ruby, probably not wanting to be left behind, adds an lseek of it's own (also not strictly necessary, I think?). Do note how <a href="https://linux.die.net/man/2/openat">openat</a> here takes only ~30µs, but it was ~80µs when opening for writing with `O_WRONLY|O_CREAT|O_TRUNC`.
+Nothing terribly surprising here. Python still doing its double <a href="https://linux.die.net/man/2/lseek">lseek</a> and Ruby, probably not wanting to be left behind, adds an <a href="https://linux.die.net/man/2/lseek">lseek</a> of its own (also not strictly necessary, as far as I can tell). Note how <a href="https://linux.die.net/man/2/openat">openat</a> here takes only ~30µs, but it was ~80µs when opening for with `O_WRONLY|O_CREAT|O_TRUNC`.
 
 ### Sneaky syscalls
 
-Let's look at another somewhat interesting case -- generating random numbers and telling time:
+Let's look at another interesting case—generating random numbers and telling time:
 
 ```python
 # python
@@ -251,7 +253,7 @@ current_time = time.time()
 current_time = Time.now
 ```
 
-You might reasonably assume you'd need a system call here too, but not so. Since these operations are frequently used and not privileged, they use [vDSO](https://man7.org/linux/man-pages/man7/vdso.7.html) and turn into a normal function calls, avoiding having to pay the price of a syscall. This makes them invisible to `strace` but you'd see them pop up in `ltrace`.
+You might reasonably assume you'd need a system call here too, but not so. Since these operations are frequently used and not privileged, they use [vDSO](https://man7.org/linux/man-pages/man7/vdso.7.html) and turn into normal function calls, avoiding paying the price of a syscall. This makes them invisible to `strace` but you'd see them pop up in `ltrace`.
 
 
 ### Printing
@@ -285,8 +287,9 @@ puts "Hello"
     </tr>
 </table>
 
-<a href="https://linux.die.net/man/2/write">write</a>
+I expected both languages to just use <a href="https://linux.die.net/man/2/write">write</a>, but apparently some 6 years ago Ruby switched to using <a href="https://linux.die.net/man/2/writev">writev</a> instead in [Feature #14042: IO#puts: use writev if available](https://bugs.ruby-lang.org/issues/14042). Before this, `puts` would use an extra <a href="https://linux.die.net/man/2/write">write</a> to output a newline and hence wasn't atomic.
 
-<a href="https://linux.die.net/man/2/writev">writev</a> is apparently atomic, so it should provide more reasonable output when multiple threads are writing stuff.
+### Fin
+I hope you found this interesting! If you'd find it useful if Cirron supported another language too, let me know!
 
 [^0]: [https://github.com/python/cpython/blob/main/Lib/_pyio.py#L247](https://github.com/python/cpython/blob/main/Lib/_pyio.py#L247)
