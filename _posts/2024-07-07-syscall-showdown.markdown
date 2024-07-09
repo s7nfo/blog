@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Syscall Showdown: Python vs. Ruby"
+title:  "The Syscall Showdown: Python vs. Ruby"
 ---
 
 We've released a new version of [Cirron](https://github.com/s7nfo/Cirron) that can now trace syscalls and record performance counters for individual lines of Ruby code, just like it could already do for Python (more [here](http://blog.mattstuchlik.com/2024/02/08/counting-cpu-instructions-in-python.html) and [here](http://blog.mattstuchlik.com/2024/02/16/counting-syscalls-in-python.html)). It makes it very easy to quickly inspect what's happening in any section of your code and even assert what should be happening in tests, for example.
