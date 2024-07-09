@@ -7,8 +7,6 @@ We've released a new version of [Cirron](https://github.com/s7nfo/Cirron) that c
 
 To put it through its paces I've compared what syscalls each language uses for several common patterns: File IO, generating random numbers, telling time and even just printing a string.
 
-I've learned some interesting things!
-
 ### File IO
 
 Let's start with something surprising right away. Here are the snippets under investigation, simply writing a string to a file (I'll be omitting the Cirron setup from the snippets later on):
