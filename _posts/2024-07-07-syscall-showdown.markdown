@@ -3,13 +3,15 @@ layout: post
 title:  "Syscall Showdown: Python vs. Ruby"
 ---
 
-We've released a new version of [Cirron](https://github.com/s7nfo/Cirron) that can now trace syscalls and record performance counters for individual lines of Ruby code, just like it already could do for Python (more [here](http://blog.mattstuchlik.com/2024/02/08/counting-cpu-instructions-in-python.html) and [here](http://blog.mattstuchlik.com/2024/02/16/counting-syscalls-in-python.html)). It makes it very easy to quickly inspect what's happening in any section of your code and even assert what should be happening in tests, for example.
+We've released a new version of [Cirron](https://github.com/s7nfo/Cirron) that can now trace syscalls and record performance counters for individual lines of Ruby code, just like it could already do for Python (more [here](http://blog.mattstuchlik.com/2024/02/08/counting-cpu-instructions-in-python.html) and [here](http://blog.mattstuchlik.com/2024/02/16/counting-syscalls-in-python.html)). It makes it very easy to quickly inspect what's happening in any section of your code and even assert what should be happening in tests, for example.
 
 To put it through its paces I've compared what syscalls each language uses for several common patterns: File IO, generating random numbers, telling time and even just printing a string.
 
+I've learned some interesting things!
+
 ### File IO
 
-Let's start with something a little surprising right away. Here are the snippets under investigation, simply writing a string to a file (I'll be omitting the Cirron setup from the snippets later on):
+Let's start with something surprising right away. Here are the snippets under investigation, simply writing a string to a file (I'll be omitting the Cirron setup from the snippets later on):
 
 ```python
 # python
@@ -115,11 +117,11 @@ Both languages then use <a href="https://linux.die.net/man/2/ioctl">ioctl</a> to
 
 So far as expected, but then... Python decides to [lseek](https://linux.die.net/man/2/lseek) to the start of the file twice. This doesn't seem strictly necessary and a quick look through the cPython codebase didn't reveal why this is happening. If you know, let me know!
 
-Anyway: finally both languages use <a href="https://linux.die.net/man/2/write">write</a> to write our string and <a href="https://linux.die.net/man/2/close">close</a> to close the file handle.
+Anyway: finally both languages use <a href="https://linux.die.net/man/2/write">write</a> to write our string and <a href="https://linux.die.net/man/2/close">close</a> to close the file descriptor.
 
 
 
-Let's look at reading a file now:
+How about reading a file?
 
 ```python
 # python
@@ -231,7 +233,7 @@ Nothing terribly surprising here. Python still doing its double <a href="https:/
 
 ### Sneaky syscalls
 
-Let's look at another interesting case—generating random numbers and telling time:
+Let's look at generating random numbers and telling time:
 
 ```python
 # python
