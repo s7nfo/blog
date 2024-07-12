@@ -15,7 +15,7 @@ On the surface, a trivial problem. But what if you wanted to go as fast as possi
 
 I'm currently one of the top ranked competitors in [exactly that kind of challenge](https://highload.fun/tasks/1) and in this post I'll show you a sketch of my best performing solution. I'll leave out some of the µoptimizations and look-up table generation to keep this post short, easier to understand and to not completely obliterate the HighLoad leaderboard. Still, as far as I know nothing similar has been published yet, so I'm hoping you'll find it valuable.
 
-I'll write a companion post later on where I'll describe one of the techniquest used here: what I think is a fairly novel, though certainly very insane, way of initializing sparse, ultra-wide, zero-overhead lookup tables. The whole story of how I made it work is somewhat complex.
+I'll write a companion post later on where I'll describe one of the techniques used here: what I think is a fairly novel, though certainly very insane, way of initializing sparse, ultra-wide, zero-overhead lookup tables. The whole story of how I made it work is somewhat complex.
 
 On the target hardware my program runs about 320x faster than the following naive C++ solution (and is about 1,000,000x more fragile):
 
@@ -38,7 +38,7 @@ The program is over-fit to the input spec and the particular host it runs on (In
 
 Here's the high-level overview: forget about parsing the input number-by-number and keeping a running sum! We'll instead iterate over 32 byte chunks of the input using SIMD, from back to front, keeping track of the sum of the digits in each decimal place. In other words, if the input was "123\n45\n678", we'll remember that we've seen a total of 7 in the "hundreds", 13 in the "tens" and 11 in the "ones" place. After we're done processing the whole input, we get the final sum by multiplying these decimal place sums with powers of ten: 7\*10² + 13\*10¹ + 11\*10⁰ = 846. Note that since the highest number we have to deal with is 2³¹−1, we have to track at most ⌈log₁₀(2³¹−1)⌉ = 10 decimal place sums.
 
-How do we identify which byte of our input chunk is which decimal place? A look-up table. The mapping from byte of an input chunk to its decimal place is determined by just two things: the location of newlines in the chunk and the length of the left-most number in the previous chunk. In other words in a chunk like "???\n??\n???" that follows "???\n???\n???", the first byte is always the 3rd decimal place, then the 2nd, etc., and the last byte is always the 4th decimal place, because it follows a number with 3 digits in the previous chunk.
+How do we identify which byte of our input chunk is which decimal place? A look-up table. The mapping from the byte of an input chunk to its decimal place is determined by just two things: the location of newlines in the chunk and the length of the leftmost number in the previous chunk. In other words in a chunk like "???\n??\n???" that follows "???\n???\n???", the first byte is always the 3rd decimal place, then the 2nd, etc., and the last byte is always the 4th decimal place, because it follows a number with 3 digits in the previous chunk.
 
 That's the high level, but of course the details of the implementation matter a lot too, so let's look at the source code.
 
@@ -48,16 +48,16 @@ That's the high level, but of course the details of the implementation matter a 
 // Pointer to the beginning of our input.
 char* start = (...)
 
-// Offset from `start` to the first byte of current 32 byte chunk.
+// Offset from `start` to the first byte of the current 32 byte chunk.
 // TODO: long long??
 long long offset = (...)
 
 // SIMD vector full of ASCII '\n'.
 const __m256i ascii_zero = _m256_set1_epi8(0x30);
 
-// The size of the left-most number in the previous chunk (remember, we iterate
+// The size of the leftmost number in the previous chunk (remember, we iterate
 // input back-to-front), which partially determines the decimal places of the
-// right-most number in the current chunk. Since we iterate from the end of the
+// rightmost number in the current chunk. Since we iterate from the end of the
 // input, we can initialize this to 0.
 last_number_size = 0;
 
@@ -72,11 +72,11 @@ uint64_t decimal_sums[10] = {0};
 // [5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 | 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
 //                 ^ this byte accumulates 10^0 = "ones"      ^ this byte accumulates 10^2 = "hundreds"
 // The somewhat unusual layout is motivated by the fact that AVX2 shuffle
-// cannot move bytes accross a lane boundary and because you expect to see
+// cannot move bytes across a lane boundary and because you expect to see
 // more low exponent digits.
 __m256i sums_acc = _mm256_set1_epi8(0)
 
-// The decimal place sums accumulator can only accumulate so many of chunks.
+// The decimal place sums accumulator can only accumulate so many chunks.
 // Worst case scenario is a '9' hitting the same accumulator slot in the
 // accumulator twice per iteration of the main loop. Therefore the
 // maximum safe accumulation batch size is 255 / (2 * 9) = 14. In practice
@@ -115,10 +115,10 @@ while (offset) {
     // 11 was chosen empirically.
     _mm_prefetch(reinterpret_cast<const char*>(start + offset - 11*64), _MM_HINT_T0);
 
-    // Load 32 byte chunk of input.
+    // Load a 32 byte chunk of input.
     __m256i input = _mm256_load_si256(reinterpret_cast<__m256i*>(start + offset));
 
-    // Substract value of ASCII '0' (0x30) from each byte of the chunk.
+    // Subtract value of ASCII '0' (0x30) from each byte of the chunk.
     // This accomplishes two things:
     //  1) Bytes that represent digits will now hold the digit value instead
     //     of the ASCII code for the digit. ie. '0' (value 0x30) will now be
@@ -143,7 +143,7 @@ while (offset) {
     uint64_t mask = (uint32_t)_mm256_movemask_epi8(input_next);
 
     // The location of the mappings from input bytes to decimal places is
-    // determined by the mask and the left-most number in the previous chunk.
+    // determined by the mask and the leftmost number in the previous chunk.
     // There are two mappings for each (mask, last_number_size) pair, 32 bytes
     // each, for one cache line in total and there are 11 of them per newline
     // mask, because last_number_size can be 0 to 10.
@@ -166,7 +166,7 @@ while (offset) {
     //   have available and more than you could create with a normal array
     //   literal.
     // On the positive side the lookup table is very sparse: thanks to the
-    // specific input distrubution, we only have O(1,000s) chunks of mappings
+    // specific input distribution, we only have O(1,000s) chunks of mappings
     // spread over the whole 42 bit address space.
     // This is the part that I'll explain in more detail in a follow up post,
     // but for now you can imagine as if we `mmap` and `memcpy` all the mappings
@@ -192,7 +192,7 @@ while (offset) {
     // Fortunately for us, this turns out to be very unlikely and we are almost
     // guaranteed to be able to completely accumulate the input within
     // 2 `shuffles`, so that is what we do in exchange for occasionally
-    // producing incorrect result.
+    // producing incorrect results.
     // One of my solutions had a neat compression scheme here:
     // AVX2 `shuffle` only shuffles within each 16 byte lane of the full 32 byte
     // register. It therefore only uses the lower 4 bits of the shuffle control
@@ -215,11 +215,11 @@ while (offset) {
     sums_acc = _m256_add_epi8(sums_acc, shuffled_input1)
     sums_acc = _m256_add_epi8(sums_acc, shuffled_input2)
 
-    // Store the size of the left-most number for next iteration.
+    // Store the size of the leftmost number for the next iteration.
     // Note that on Haswell this will generate `xor B, B` in addition to
     // `tzcnt A, B`. This is meant as a fix for a false dependency bug on
     // bunch of BMI instructions on this µarch.
-    // In our case the fix is contraproductive because we're not bottlenecked
+    // In our case the fix is counterproductive because we're not bottlenecked
     // on the latency of this instruction. I don't know of any way to bypass
     // that `xor` other than using __asm__ directly.
     // (More on the bug:
