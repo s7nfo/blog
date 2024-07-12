@@ -13,9 +13,7 @@ title:  "Probably the fastest way to sum integers you've ever seen"
 
 On the surface, a trivial problem. But what if you wanted to go as fast as possible?
 
-I'm currently one of the top ranked competitors in [exactly that kind of challenge](https://highload.fun/tasks/1) and in this post I'll show you a sketch of my best performing solution. I'll leave out some of the µoptimizations and look-up table generation to keep this post short, easier to understand and to not completely obliterate the HighLoad leaderboard. Still, as far as I know nothing similar has been published yet, so I'm hoping you'll find it valuable.
-
-I'll write a companion post later on where I'll describe one of the techniques used here: what I think is a fairly novel, though certainly very insane, way of initializing sparse, ultra-wide, zero-overhead lookup tables. The whole story of how I made it work is somewhat complex.
+I'm currently one of the top ranked competitors in [exactly that kind of challenge](https://highload.fun/tasks/1) and in this post I'll show you a sketch of my best performing solution. I'll leave out some of the µoptimizations and look-up table generation to keep this post short, easier to understand and to not completely obliterate the HighLoad leaderboard. Still, as far as I know nothing similar has been published yet, so I'm hoping you'll find it interesting.
 
 On the target hardware my program runs about 320x faster than the following naive C++ solution (and is about 1,000,000x more fragile):
 
@@ -29,6 +27,8 @@ while (std::cin) {
 
 std::cout << sum << std::endl;
 ```
+
+I'll write a companion post later on where I'll describe one of the techniques used here: what I think is a fairly novel, though certainly very insane, way of initializing sparse, ultra-wide, zero-overhead lookup tables. The whole story of how I made it work is somewhat complex to fit into this post.
 
 ## Limitations
 
@@ -49,8 +49,7 @@ That's the high level, but of course the details of the implementation matter a 
 char* start = (...)
 
 // Offset from `start` to the first byte of the current 32 byte chunk.
-// TODO: long long??
-long long offset = (...)
+uint64_t offset = (...)
 
 // SIMD vector full of ASCII '\n'.
 const __m256i ascii_zero = _m256_set1_epi8(0x30);
