@@ -3,6 +3,12 @@ layout: post
 title:  "Probably the fastest way to sum integers you've ever seen"
 ---
 
+<style>
+  code {
+    font-size: 13px;
+}
+</style>
+
 "Print the sum of 50 million ASCII-encoded integers uniformly sampled from [0, 2³¹−1], separated by a single new line and sent to standard input."
 
 On the surface, a trivial problem. But what if you wanted to go as fast as possible?
