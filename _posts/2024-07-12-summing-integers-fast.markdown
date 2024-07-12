@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Probably the fastest way to sum integers you've ever seen"
+title:  "The fastest way to sum integers you've probably ever seen"
 ---
 
 <style>
@@ -17,7 +17,7 @@ On the surface, a trivial problem. But what if you wanted to go as fast as possi
 
 I'm currently one of the top ranked competitors in [exactly that kind of challenge](https://highload.fun/tasks/1) and in this post I'll show you a sketch of my best performing solution. I'll leave out some of the µoptimizations and look-up table generation to keep this post short, easier to understand and to not completely obliterate the HighLoad leaderboard. Still, as far as I know nothing similar has been published yet, so I'm hoping you'll find it interesting.
 
-On the target hardware my program runs about 320x faster than the following naive C++ solution (and is about 1,000,000x more fragile):
+On the target system my program runs about 320x faster than the following naive C++ solution (and is about 1,000,000x more fragile):
 
 ```cpp
 uint64_t sum = 0;
@@ -30,7 +30,7 @@ while (std::cin) {
 std::cout << sum << std::endl;
 ```
 
-I'll write a companion post later on where I'll describe one of the techniques used here in more detail: what I think is a fairly novel, though certainly very insane, way of initializing sparse, ultra-wide, zero-overhead lookup tables. The whole story of how I made it work is a little long to fit into this post.
+I'll write a companion post later on where I'll describe one of the techniques used here in more detail: what I think is a fairly novel, though certainly very insane, way of initializing sparse, very-wide, zero-overhead lookup tables. The whole story of how I made it work is a little long to fit into this post.
 
 ## Limitations
 
@@ -42,7 +42,7 @@ Here's the high-level overview: forget about parsing the input number-by-number 
 
 How do we identify which byte of our input chunk is which decimal place? A look-up table. The mapping from the byte of an input chunk to its decimal place is determined by just two things: the location of newlines in the chunk and the length of the leftmost number in the previous chunk. In other words in a chunk like "???\n??\n???" that follows "???\n???\n???", the first byte is always the 3rd decimal place, then the 2nd, etc., and the last byte is always the 4th decimal place, because it follows a number with 3 digits in the previous chunk.
 
-That's the high level, but of course the details of the implementation matter a lot too, so let's look at the source code.
+That's the high level, but of course the details of the implementation matter a lot too, so let's look at the source code. This is the meat of the post, I've commented the code extensively to explain how it works and why it works that way. It might be hard to read on a phone, in which case I recommend bookmarking it and reading it on desktop later.
 
 ```cpp
 // First, the variables and constants we'll need:
@@ -67,19 +67,19 @@ last_number_size = 0;
 uint64_t decimal_sums[10] = {0};
 
 // For efficiency, we accumulate decimal place sums into this vector and dump
-// them into the array above every `BATCH_SIZE` iterations.
+// them into the `decimal_sums` array every `BATCH_SIZE` iterations.
 // The layout of this vector is below, where a number represents an exponent
 // of the power of ten the byte represents:
 // [5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 | 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
 //                 ^ this byte accumulates 10^0 = "ones"      ^ this byte accumulates 10^2 = "hundreds"
 // The somewhat unusual layout is motivated by the fact that AVX2 shuffle
 // cannot move bytes across a lane boundary and because you expect to see
-// more low exponent digits.
+// more low decimal place digits.
 __m256i sums_acc = _mm256_set1_epi8(0)
 
-// The decimal place sums accumulator can only accumulate so many chunks.
-// Worst case scenario is a '9' hitting the same accumulator slot in the
-// accumulator twice per iteration of the main loop. Therefore the
+// The decimal place sums accumulator can only accumulate so many chunks
+// before overflowing. Worst case scenario is a '9' hitting the same
+// accumulator slot twice per iteration of the main loop. Therefore the
 // maximum safe accumulation batch size is 255 / (2 * 9) = 14. In practice
 // you can increase it to almost twice that number without lowering the
 // probability of correct output too much (at least for HighLoad).
@@ -113,7 +113,7 @@ while ((offset & 0xFF) != 0) {
 // Now for the performance critical section!
 while (offset) {
     // Prefetch input for future iterations, 11 cache lines forward.
-    // 11 was chosen empirically.
+    // 11 chosen empirically.
     _mm_prefetch(reinterpret_cast<const char*>(start + offset - 11*64), _MM_HINT_T0);
 
     // Load a 32 byte chunk of input.
@@ -139,8 +139,7 @@ while (offset) {
     // be tempted to say we need `cmpeq(input, 0x0A)` before this `movemask`,
     // but `movemask` only looks at the top bit of each byte to
     // decide the value of the bit in the bitmask, so the fact that the `sub`
-    // sets the top bit for each newline, but not for digits, is sufficient
-    // for what we need.
+    // sets the top bit for each newline, but not for digits, is sufficient.
     uint64_t mask = (uint32_t)_mm256_movemask_epi8(input);
 
     // The location of the mappings from input bytes to decimal places is
@@ -172,7 +171,7 @@ while (offset) {
     // This is the part that I'll explain in more detail in a follow up post,
     // but for now you can imagine as if we `mmap` and `memcpy` all the mappings
     // to the right addresses at the start of the program. Let me know if you
-    // think you know how to do it ~zero-cost!
+    // think you know how to do it ~zero-cost! :)
     // Before I came up with this approach I used a derived index based on the
     // size of the numbers in the chunk using chained `tzcnt`. This shrinks the
     // index space to (barely) fit in a normal look up table, but the index
@@ -181,17 +180,16 @@ while (offset) {
     __m256i shuffle_ctrl1 = _mm256_loadu_si256(reinterpret_cast<__m256i*>(lut_idx));
     __m256i shuffle_ctrl2 = _mm256_loadu_si256(reinterpret_cast<__m256i*>(lut_idx + 32));
 
-    // When I talked about mapping from input bytes to decimal place it's
+    // When I talked about a mapping from input bytes to decimal places, it's
     // really a shuffle control mask that moves input bytes into the same
-    // layout that the `sum_acc` accumulator vector has.
+    // layout that the `sums_acc` vector has.
     // This is another one of those places where the specific input distribution
     // really matters:
-    // There are 4 spots for "ones" in the decimal sums accumulator / shuffled
-    // input vectors. If our input chunk consisted of only 1 digit numbers,
-    // "1\n2\n\3...", we'd need to perform this `shuffle`, `add` procedure up to
-    // 32 / 2 / 4 = 4 times.
+    // There are 4 spots for "ones" in `sums_acc`. If our input chunk consisted
+    // of only 1 digit numbers, "1\n2\n\3...", we'd need to perform the following
+    // `shuffle`, `add` procedure up to 32 / 2 / 4 = 4 times.
     // Fortunately for us, this turns out to be very unlikely and we are almost
-    // guaranteed to be able to completely accumulate the input within
+    // guaranteed to be able to completely accumulate the chunk within
     // 2 `shuffles`, so that is what we do in exchange for occasionally
     // producing incorrect results.
     // One of my solutions had a neat compression scheme here:
@@ -211,12 +209,12 @@ while (offset) {
     __m256i shuffled_input1 = _mm256_shuffle_epi8(input, shuffle_ctrl1);
     __m256i shuffled_input2 = _mm256_shuffle_epi8(input, shuffle_ctrl2);
 
-    // Shuffled input 1 & 2 are now in the correct layout for us to add them
-    // directly to the decimal sums accumulator.
+    // Shuffled inputs 1 & 2 are now in the correct layout for us to add them
+    // directly to the decimal place sums accumulator.
     sums_acc = _m256_add_epi8(sums_acc, shuffled_input1)
     sums_acc = _m256_add_epi8(sums_acc, shuffled_input2)
 
-    // Store the size of the leftmost number for the next iteration.
+    // This stores the size of the leftmost number for the next iteration.
     // Note that on Haswell this will generate `xor B, B` in addition to
     // `tzcnt A, B`. This is meant as a fix for a false dependency bug on
     // bunch of BMI instructions on this µarch.
@@ -227,8 +225,8 @@ while (offset) {
     // https://stackoverflow.com/questions/25078285/replacing-a-32-bit-loop-counter-with-64-bit-introduces-crazy-performance-deviati)
     last_number_size = _tzcnt_u32(mask)
 
-    // Once we accumulate `BATCH_SIZE` chunks in our decimal sums accumulator,
-    // dump them into the sums array.
+    // Once we accumulate `BATCH_SIZE` chunks in `sums_acc`, dump them into
+    // the sums array.
     batch--;
     if (!batch) {
         batch = BATCH_SIZE;
@@ -238,7 +236,7 @@ while (offset) {
         decimal_sums[0] = _m256_extract_epi8(sums_acc, 21)
         decimal_sums[0] = _m256_extract_epi8(sums_acc, 31)
         (...)
-        // ...up to 10^9's.
+        // ...and up to 10^9's.
         decimal_sums[9] = _m256_extract_epi8(sums_acc, 6)
         decimal_sums[9] = _m256_extract_epi8(sums_acc, 22)
     }
