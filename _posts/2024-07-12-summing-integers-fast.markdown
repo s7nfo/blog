@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "The fastest way to sum integers you've probably ever seen"
+title:  "Summing ASCII encoded integers on Haswell at almost the speed of memcpy"
 ---
 
 <style>
