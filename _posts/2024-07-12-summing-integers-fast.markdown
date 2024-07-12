@@ -6,6 +6,8 @@ title:  "Probably the fastest way to sum integers you've ever seen"
 <style>
   code {
     font-size: 13px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
 }
 </style>
 
@@ -28,7 +30,7 @@ while (std::cin) {
 std::cout << sum << std::endl;
 ```
 
-I'll write a companion post later on where I'll describe one of the techniques used here: what I think is a fairly novel, though certainly very insane, way of initializing sparse, ultra-wide, zero-overhead lookup tables. The whole story of how I made it work is somewhat complex to fit into this post.
+I'll write a companion post later on where I'll describe one of the techniques used here in more detail: what I think is a fairly novel, though certainly very insane, way of initializing sparse, ultra-wide, zero-overhead lookup tables. The whole story of how I made it work is a little long to fit into this post.
 
 ## Limitations
 
@@ -36,7 +38,7 @@ The program is over-fit to the input spec and the particular host it runs on (In
 
 ## The Algorithm
 
-Here's the high-level overview: forget about parsing the input number-by-number and keeping a running sum! We'll instead iterate over 32 byte chunks of the input using SIMD, from back to front, keeping track of the sum of the digits in each decimal place. In other words, if the input was "123\n45\n678", we'll remember that we've seen a total of 7 in the "hundreds", 13 in the "tens" and 11 in the "ones" place. After we're done processing the whole input, we get the final sum by multiplying these decimal place sums with powers of ten: 7\*10² + 13\*10¹ + 11\*10⁰ = 846. Note that since the highest number we have to deal with is 2³¹−1, we have to track at most ⌈log₁₀(2³¹−1)⌉ = 10 decimal place sums.
+Here's the high-level overview: forget about parsing the input number-by-number and keeping a running sum! We'll instead iterate over 32 byte chunks of the input using SIMD, from back to front, keeping track of the sum of the digits in each decimal place. In other words, if the input was "123\n45\n678", we'll remember that we've seen a total of 7 in the "hundreds", 13 in the "tens" and 16 in the "ones" place. After we're done processing the whole input, we get the final sum by multiplying these decimal place sums with powers of ten: 7\*10² + 13\*10¹ + 16\*10⁰ = 846. Note that since the highest number we have to deal with is 2³¹−1, we have to track at most ⌈log₁₀(2³¹−1)⌉ = 10 decimal place sums.
 
 How do we identify which byte of our input chunk is which decimal place? A look-up table. The mapping from the byte of an input chunk to its decimal place is determined by just two things: the location of newlines in the chunk and the length of the leftmost number in the previous chunk. In other words in a chunk like "???\n??\n???" that follows "???\n???\n???", the first byte is always the 3rd decimal place, then the 2nd, etc., and the last byte is always the 4th decimal place, because it follows a number with 3 digits in the previous chunk.
 
@@ -261,5 +263,5 @@ print(sum)
 
 
 
-# Acknowledgements
-Thanks to the HighLoad community on Signal, especially Grace Fu and Jack Frigaard.
+# Fin
+Let me know if you have any feedback and thank you to the HighLoad community on Signal, especially Grace Fu and Jack Frigaard.
