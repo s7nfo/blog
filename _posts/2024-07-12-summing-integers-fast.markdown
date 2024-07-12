@@ -211,8 +211,8 @@ while (offset) {
 
     // Shuffled inputs 1 & 2 are now in the correct layout for us to add them
     // directly to the decimal place sums accumulator.
-    sums_acc = _m256_add_epi8(sums_acc, shuffled_input1)
-    sums_acc = _m256_add_epi8(sums_acc, shuffled_input2)
+    sums_acc = _m256_add_epi8(sums_acc, shuffled_input1);
+    sums_acc = _m256_add_epi8(sums_acc, shuffled_input2);
 
     // This stores the size of the leftmost number for the next iteration.
     // Note that on Haswell this will generate `xor B, B` in addition to
@@ -223,7 +223,7 @@ while (offset) {
     // that `xor` other than using __asm__ directly.
     // (More on the bug:
     // https://stackoverflow.com/questions/25078285/replacing-a-32-bit-loop-counter-with-64-bit-introduces-crazy-performance-deviati)
-    last_number_size = _tzcnt_u32(mask)
+    last_number_size = _tzcnt_u32(mask);
 
     // Once we accumulate `BATCH_SIZE` chunks in `sums_acc`, dump them into
     // the sums array.
@@ -231,14 +231,14 @@ while (offset) {
     if (!batch) {
         batch = BATCH_SIZE;
         // Extract all accumulated "ones"...
-        decimal_sums[0] = _m256_extract_epi8(sums_acc, 5)
-        decimal_sums[0] = _m256_extract_epi8(sums_acc, 15)
-        decimal_sums[0] = _m256_extract_epi8(sums_acc, 21)
-        decimal_sums[0] = _m256_extract_epi8(sums_acc, 31)
+        decimal_sums[0] = _m256_extract_epi8(sums_acc, 5);
+        decimal_sums[0] = _m256_extract_epi8(sums_acc, 15);
+        decimal_sums[0] = _m256_extract_epi8(sums_acc, 21);
+        decimal_sums[0] = _m256_extract_epi8(sums_acc, 31);
         (...)
         // ...and up to 10^9's.
-        decimal_sums[9] = _m256_extract_epi8(sums_acc, 6)
-        decimal_sums[9] = _m256_extract_epi8(sums_acc, 22)
+        decimal_sums[9] = _m256_extract_epi8(sums_acc, 6);
+        decimal_sums[9] = _m256_extract_epi8(sums_acc, 22);
     }
 
     // Move the offset to the next batch.
@@ -262,4 +262,4 @@ print(sum)
 
 
 # Fin
-Let me know if you have any feedback and thank you to the HighLoad community on Telegram, especially Grace Fu and Jack Frigaard.
+Let me know if you have any feedback and thank you to the HighLoad community on Telegram, especially gracefu and Jack Frigaard.
