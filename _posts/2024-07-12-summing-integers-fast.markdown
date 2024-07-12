@@ -120,14 +120,14 @@ while (offset) {
     // Subtract value of ASCII '0' (0x30) from each byte of the chunk.
     // This accomplishes two things:
     //  1) Bytes that represent digits will now hold the digit value instead
-    //     of the ASCII code for the digit. ie. '0' (value 0x30) will now be
+    //     of the ASCII code for the digit. i.e. '0' (value 0x30) will now be
     //     0x00, '1' (value 0x31) will now be 0x01, etc.
     //  2) Bytes that represent newlines will have their top bit set, because
     //     newlines are 0x0A, 0x0A - 0x30 = 0b11011010. This will become
     //     relevant in the next step.
     input = _mm256_sub_epi8(input, ascii_zero);
 
-    // Create a bitmask of newlines in the input chunk, ie. given a chunk
+    // Create a bitmask of newlines in the input chunk, i.e. given a chunk
     // "123\n456\n" return 0b00010001.
     // The bitmask is 32 bits, since the input is 32 bytes and we'll store
     // it in a 64 bit variable with the top half zeroed since we'll need
@@ -250,7 +250,7 @@ while (offset) {
 // All that's left to do is to multiply our accumulated decimal place sums by
 // the right power of ten and sum to get the final sum.
 exp = 1;
-for (int i =0; i < 10, i++) {
+for (int i = 0; i < 10; i++) {
     sum += decimal_sums[i] * exp;
     exp *= 10;
 }
@@ -259,5 +259,7 @@ for (int i =0; i < 10, i++) {
 print(sum)
 ```
 
+
+
 # Acknowledgements
-Thanks to the HighLoad community on Signal and especially Grace Fu and Jack Frigaard.
+Thanks to the HighLoad community on Signal, especially Grace Fu and Jack Frigaard.
