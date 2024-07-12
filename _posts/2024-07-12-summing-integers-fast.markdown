@@ -140,7 +140,7 @@ while (offset) {
     // decide the value of the bit in the bitmask, so the fact that the `sub`
     // sets the top bit for each newline, but not for digits, is sufficient
     // for what we need.
-    uint64_t mask = (uint32_t)_mm256_movemask_epi8(input_next);
+    uint64_t mask = (uint32_t)_mm256_movemask_epi8(input);
 
     // The location of the mappings from input bytes to decimal places is
     // determined by the mask and the leftmost number in the previous chunk.
@@ -155,7 +155,7 @@ while (offset) {
     // but it's ultimately much slower due to cache associativity
     // issues (nice overview of the problem is for example here:
     // https://en.algorithmica.org/hpc/cpu-cache/associativity/)
-    lut_idx = 11 * 64 * mask + 64 * last_number_size
+    uint64_t lut_idx = 11 * 64 * mask + 64 * last_number_size
 
     // Now we dereference the location to get the two mappings.
     // This is a point where you should be a little confused:
@@ -231,13 +231,15 @@ while (offset) {
     batch--;
     if (!batch) {
         batch = BATCH_SIZE;
-        sums[0] = _m256_extract_epi8(sums_acc, 5)
-        sums[0] = _m256_extract_epi8(sums_acc, 15)
-        sums[0] = _m256_extract_epi8(sums_acc, 21)
-        sums[0] = _m256_extract_epi8(sums_acc, 31)
+        // Extract all accumulated "ones"...
+        decimal_sums[0] = _m256_extract_epi8(sums_acc, 5)
+        decimal_sums[0] = _m256_extract_epi8(sums_acc, 15)
+        decimal_sums[0] = _m256_extract_epi8(sums_acc, 21)
+        decimal_sums[0] = _m256_extract_epi8(sums_acc, 31)
         (...)
-        sums[9] = _m256_extract_epi8(sums_acc, 6)
-        sums[9] = _m256_extract_epi8(sums_acc, 22)
+        // ...up to 10^9's.
+        decimal_sums[9] = _m256_extract_epi8(sums_acc, 6)
+        decimal_sums[9] = _m256_extract_epi8(sums_acc, 22)
     }
 
     // Move the offset to the next batch.
@@ -250,7 +252,7 @@ while (offset) {
 // the right power of ten and sum to get the final sum.
 exp = 1;
 for (int i =0; i < 10, i++) {
-    sum += sums[i] * exp;
+    sum += decimal_sums[i] * exp;
     exp *= 10;
 }
 
