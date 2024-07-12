@@ -262,4 +262,4 @@ print(sum)
 
 
 # Fin
-Let me know if you have any feedback and thank you to the HighLoad community on Signal, especially Grace Fu and Jack Frigaard.
+Let me know if you have any feedback and thank you to the HighLoad community on Telegram, especially Grace Fu and Jack Frigaard.
