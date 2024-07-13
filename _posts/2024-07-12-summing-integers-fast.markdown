@@ -17,7 +17,7 @@ On the surface, a trivial problem. But what if you wanted to go as fast as possi
 
 I'm currently one of the top ranked competitors in [exactly that kind of challenge](https://highload.fun/tasks/1) and in this post I'll show you a sketch of my best performing solution. I'll leave out some of the µoptimizations and look-up table generation to keep this post short, easier to understand and to not completely obliterate the HighLoad leaderboard. Still, as far as I know nothing similar has been published yet, so I'm hoping you'll find it interesting.
 
-On the target system my program runs about 320x faster than the following naive C++ solution (and is about 1,000,000x more fragile):
+On the target system, my program runs about 320x faster than the following naive C++ solution (and is about 1,000,000x more fragile):
 
 ```cpp
 uint64_t sum = 0;
