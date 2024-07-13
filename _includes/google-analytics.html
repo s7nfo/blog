@@ -2,8 +2,30 @@
 <script async src="https://www.googletagmanager.com/gtag/js?id={{ site.google_analytics }}"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
+  function gtag() { dataLayer.push(arguments); }
   gtag('js', new Date());
-
   gtag('config', '{{ site.google_analytics }}');
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var externalLinks = document.querySelectorAll('a[href^="http"]:not([href*="' + window.location.host + '"])');
+
+    externalLinks.forEach(function (link) {
+      link.addEventListener('click', function (e) {
+        e.preventDefault();
+
+        var url = this.href;
+        var linkId = this.id || 'unnamed_link';
+
+        gtag('event', 'external_link_click', {
+          'event_category': 'Outbound Links',
+          'event_label': url,
+          'value': 1
+        });
+
+        setTimeout(function () {
+          window.location.href = url;
+        }, 100);
+      });
+    });
+  });
 </script>
