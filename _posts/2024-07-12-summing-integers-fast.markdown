@@ -231,14 +231,14 @@ while (offset) {
     if (!batch) {
         batch = BATCH_SIZE;
         // Extract all accumulated "ones"...
-        decimal_sums[0] = _m256_extract_epi8(sums_acc, 5);
-        decimal_sums[0] = _m256_extract_epi8(sums_acc, 15);
-        decimal_sums[0] = _m256_extract_epi8(sums_acc, 21);
-        decimal_sums[0] = _m256_extract_epi8(sums_acc, 31);
+        decimal_sums[0] += _m256_extract_epi8(sums_acc, 5);
+        decimal_sums[0] += _m256_extract_epi8(sums_acc, 15);
+        decimal_sums[0] += _m256_extract_epi8(sums_acc, 21);
+        decimal_sums[0] += _m256_extract_epi8(sums_acc, 31);
         (...)
         // ...and up to 10^9's.
-        decimal_sums[9] = _m256_extract_epi8(sums_acc, 6);
-        decimal_sums[9] = _m256_extract_epi8(sums_acc, 22);
+        decimal_sums[9] += _m256_extract_epi8(sums_acc, 6);
+        decimal_sums[9] += _m256_extract_epi8(sums_acc, 22);
     }
 
     // Move the offset to the next batch.
