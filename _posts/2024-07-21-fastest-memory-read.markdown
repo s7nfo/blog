@@ -12,7 +12,7 @@ title:  "Counting Bytes Faster Than You'd Think Possible"
 
 [Summing ASCII Encoded Integers on Haswell at the Speed of memcpy](https://blog.mattstuchlik.com/2024/07/12/summing-integers-fast.html) turned out more popular than I expected, which inspired me to take on another challenge on HighLoad: [Counting uint8s](https://highload.fun/tasks/5). I'm currently only #13 on the leaderboard, ~7% behind #1, but I already learned some interesting things. In this post I'll describe my complete solution ([skip to that](#the-source)) including a surprising memory read pattern that achieves up to ~30% higher transfer rates on fully memory bound, single core workloads compared to naive sequential access, while apparently not being widely known ([skip to that](#the-magic-sauce)).
 
-As before, the program is tuned to the input spec and for the HighLoad system: Intel Xeon E3-1271 v3 @ 3.60GHz, 512MB RAM, Ubuntu 20.04. It only uses AVX2, no AVX512. As presented, it produces correct result with probability < 1, though very close to 1 and can be tuned to get to 1 in exchange for a very minor performance hit.
+As before, the program is tuned to the input spec and for the HighLoad system: Intel Xeon E3-1271 v3 @ 3.60GHz, 512MB RAM, Ubuntu 20.04. It only uses AVX2, no AVX512.
 
 ## The Challenge
 
