@@ -202,7 +202,6 @@ Anyway, one other small thing: we add a prefetch for 4 cache lines ahead:
 #define BLOCK_COUNT 8
 #define PAGE_SIZE 4096
 #define TARGET_BYTE 127
-#define RANK_SIZE (32 * PAGE_SIZE)
 
 #define BLOCKS_8 \
     BLOCK(0)  BLOCK(1)  BLOCK(2)  BLOCK(3) \
@@ -231,7 +230,6 @@ int main() {
 
     char* start = static_cast<char*>(mmap(nullptr, length, PROT_READ, MAP_PRIVATE | MAP_POPULATE, STDIN_FILENO, 0));
     assert(start != MAP_FAILED);
-    assert(reinterpret_cast<uintptr_t>(start) % RANK_SIZE == 0);
 
     uint64_t count = 0;
     __m256i sum64 = _mm256_setzero_si256();
