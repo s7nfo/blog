@@ -18,7 +18,7 @@ As before, the program is tuned to the input spec and for the HighLoad system: I
 
 > "Print the number of bytes whose value equals 127 in a 250MB stream of bytes uniformly sampled from [0, 255] sent to standard input."
 
-Nothing much to it! The presented solution is ~550x faster than the following naive program.
+Nothing much to it! The solution presented here is ~550x faster than the following naive program.
 
 ```cpp
 uint64_t count = 0;
@@ -52,9 +52,9 @@ vpsubb       %ymm4, %ymm6, %ymm6
 With this, we iterate over 32-byte chunks of the input and:
 * Load the chunk with `vmovntdqa` (it's a non-temporal move just for style points, it doesn't make a difference to runtime).
 * Compare each byte in the chunk with `127` using `vpcmpeqb`, giving us back `0xFF` (aka `-1`) where the byte is equal to `127` and `0x00` elsewhere. For example `[125, 126, 127, 128, ...]` becomes `[0, 0, -1, 0, ...]`.
-* Substract the result of the comparison from an accumulator. Continuing the example above and assuming a zeroed accumulator, we'd get `[0, 0, 1, 0, ...]`.
+* Subtract the result of the comparison from an accumulator. Continuing the example above and assuming a zeroed accumulator, we'd get `[0, 0, 1, 0, ...]`.
 
-Then, to avoid this narrow accumulator overflowing, we dump it into a wider one every once in a while with the following:
+Then, to prevent this narrow accumulator from overflowing, we dump it into a wider one every once in a while with the following:
 
 ```nasm
 ; ymm1 is a zero vector
@@ -74,7 +74,7 @@ The thing with this challenge is, we do so little computation it's significantly
 
 > "Detects and maintains up to 32 streams of data accesses. For each 4K byte page, you can maintain one forward and one backward stream can be maintained."
 
-"For each 4K byte page". Can you see where this is going? Instead of processing the whole input sequentially, we'll interleave processing successive 4K pages. In this particular case interleaving 8 pages seems to be the optimum. We also unroll the kernel a bit and process a whole cache line (2x32 bytes) in each block.
+"For each 4K byte page". Can you see where this is going? Instead of processing the whole input sequentially, we'll interleave the processing of successive 4K pages. In this particular case interleaving 8 pages seems to be the optimum. We also unroll the kernel a bit and process a whole cache line (2x32 bytes) in each block.
 
 ```cpp
 #define BLOCK(offset) \
