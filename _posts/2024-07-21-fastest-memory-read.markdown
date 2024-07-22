@@ -22,11 +22,10 @@ Nothing much to it! The solution presented here is ~550x faster than the followi
 
 ```cpp
 uint64_t count = 0;
-while (std::cin) {
-    uint8_t v = 0;
-    std::cin >> v;
-    if (v == 127)
+for (uint8_t v; std::cin >> v;) {
+    if (v == 127) {
         ++count;
+    }
 }
 
 std::cout << count << std::endl;
