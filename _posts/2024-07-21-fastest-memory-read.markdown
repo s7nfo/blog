@@ -285,4 +285,4 @@ int main() {
 ```
 
 ## Conclusion
-The page-interleaved read patterns seems surprisingly under-discussed and I don't remember ever seeing it used in code in the wild. Curious! If you're aware of it being used anywhere, let me know, I'd love to see it!
+The page-interleaved read pattern seems surprisingly under-discussed and I don't remember ever seeing it used in code in the wild. Curious! If you're aware of it being used anywhere, let me know, I'd love to see it!
