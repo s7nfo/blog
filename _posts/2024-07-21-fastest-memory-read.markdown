@@ -10,7 +10,7 @@ title:  "Counting Bytes Faster Than You'd Think Possible"
 
 
 
-[Summing ASCII Encoded Integers on Haswell at the Speed of memcpy](https://blog.mattstuchlik.com/2024/07/12/summing-integers-fast.html) turned out more popular than I expected, which inspired me to take on another challenge on HighLoad: [Counting uint8s](https://highload.fun/tasks/5). I'm currently only #13 on the leaderboard, ~7% behind #1, but I already learned some interesting things. In this post I'll describe my complete solution ([skip to that](#the-source)) including a surprising single core memory read pattern that achieves up to ~30% higher transfer rates on fully memory bound workloads compared to naive sequential access while being strangely under-discussed on the Internet ([skip to that](#the-magic-sauce)).
+[Summing ASCII Encoded Integers on Haswell at the Speed of memcpy](https://blog.mattstuchlik.com/2024/07/12/summing-integers-fast.html) turned out more popular than I expected, which inspired me to take on another challenge on HighLoad: [Counting uint8s](https://highload.fun/tasks/5). I'm currently only #13 on the leaderboard, ~7% behind #1, but I already learned some interesting things. In this post I'll describe my complete solution ([skip to that](#the-source)) including a surprising memory read pattern that achieves up to ~30% higher transfer rates on fully memory bound, single core workloads compared to naive sequential access, while being strangely under-discussed on the Internet ([skip to that](#the-magic-sauce)).
 
 As before, the program is tuned to the input spec and for the HighLoad system: Intel Xeon E3-1271 v3 @ 3.60GHz, 512MB RAM, Ubuntu 20.04. It only uses AVX2, no AVX512. As presented, it produces correct result with probability < 1, though very close to 1 and can be tuned to get to 1 in exchange for a very minor performance hit.
 
@@ -35,7 +35,7 @@ return 0;
 
 ## The Kernel
 
-You'll find the full source code of the solution at the end of the post. But first I'll build up to how it works. The kernel of the solution is just three instructions long, so I went straight to an `__asm__` block (sorry!).
+You'll find the full source code of the solution at the end of the post. But first I'll build up to how it works. The kernel is just three instructions long, so I went straight to an `__asm__` block (sorry!).
 
 ```nasm
 ; rax is the base of the input
@@ -54,7 +54,7 @@ With this, we iterate over 32-byte chunks of the input and:
 * Compare each byte in the chunk with `127` using `vpcmpeqb`, giving us back `0xFF` (aka `-1`) where the byte is equal to `127` and `0x00` elsewhere. For example `[125, 126, 127, 128, ...]` becomes `[0, 0, -1, 0, ...]`.
 * Substract the result of the comparison from an accumulator. Continuing the example above and assuming a zeroed accumulator, we'd get `[0, 0, 1, 0, ...]`.
 
-Then, every once in a while, to avoid this narrow accumulator overflowing, we dump it into a wider one with the following:
+Then, to avoid this narrow accumulator overflowing, we dump it into a wider one every once in a while with the following:
 
 ```nasm
 ; ymm1 is a zero vector
@@ -187,8 +187,6 @@ Anyway, one other small thing: we add a prefetch for 4 cache lines ahead:
   </g>
   <text x="200" y="75" text-anchor="middle">Interleaved Access with Prefetch</text>
 </svg>
-
-There's one more thing that wasn't relevant in this particular context (everything's aligned correctly by default), but might be for you: memory rank. Memory rank is a set of DRAM chips connected to the same [chip select](https://en.wikipedia.org/wiki/Chip_select). If all your reads are within one rank, you're good. If you're accessing multiple ranks you'll get a pipeline stall as you're switching over to different sets of chips, which slows you down. I think ranks are generally 128KB of contiguous memory, so you want to make sure you're iterating over 128KB aligned data.
 
 ## The Source
 ```cpp
