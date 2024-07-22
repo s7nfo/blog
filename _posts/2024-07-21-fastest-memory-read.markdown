@@ -8,15 +8,15 @@ title:  "Counting Bytes Faster Than You'd Think Possible"
   <a href="https://twitter.com/s7nfo/status/1814337750109237399"></a> 
 </blockquote>
 
-[Summing ASCII Encoded Integers on Haswell at the Speed of memcpy](https://blog.mattstuchlik.com/2024/07/12/summing-integers-fast.html) turned out more popular than I expected, which inspired me to take on another challenge on HighLoad: [Counting uint8s](https://highload.fun/tasks/5). I'm currently only #13 on the leaderboard, ~7% behind #1, but already learned some interesting things. In this post I'll describe my complete solution including a very suprising memory read pattern that achieves up to ~30% higher transfer rates on fully memory bound workloads compared to naive sequential access (It's free real estate!!).
+[Summing ASCII Encoded Integers on Haswell at the Speed of memcpy](https://blog.mattstuchlik.com/2024/07/12/summing-integers-fast.html) turned out more popular than I expected, which inspired me to take on another challenge on HighLoad: [Counting uint8s](https://highload.fun/tasks/5). I'm currently only #13 on the leaderboard, ~7% behind #1, but already learned some interesting things. In this post I'll describe my complete solution including a suprising memory read pattern that achieves up to ~30% higher transfer rates on fully memory bound workloads compared to naive sequential access (It's free real estate!!).
 
 As before, the program is tuned for the HighLoad system: Intel Xeon E3-1271 v3 @ 3.60GHz, 512MB RAM, Ubuntu 20.04. It only uses AVX2, no AVX512. As presented, it produces correct result with probability < 1, though very close to 1 and can be tuned to get to 1 in exchange for a very minor performance hit.
 
 ## The Challenge
 
-"Print the number of bytes whose value equals 127 in a 250MB stream sent to standard input."
+> "Print the number of bytes whose value equals 127 in a 250MB stream sent to standard input."
 
-Nothing to it! The presented solution is 550x+ faster than the following naive program.
+Nothing much to it! The presented solution is ~550x faster than the following naive program.
 
 ```cpp
 uint64_t count = 0;
@@ -33,9 +33,7 @@ return 0;
 
 ## The Kernel
 
-You'll find the full source code of the solution at the end of the post. But first I'll build up to how it works.
-
-The kernel of the solution is fairly simple, so I went straight to an `__asm__` block (sorry!). The basic building block is just a couple instructions long:
+You'll find the full source code of the solution at the end of the post. But first I'll build up to how it works. The kernel of the solution is just three instructions long, so I went straight to an `__asm__` block (sorry!).
 
 ```nasm
 ; rax is the base of the input
@@ -43,17 +41,16 @@ The kernel of the solution is fairly simple, so I went straight to an `__asm__` 
 vmovntdqa    (%rax, %rsi, 1), %ymm4
 ; ymm2 is a vector full of 127
 vpcmpeqb     %ymm4, %ymm2, %ymm4
-; ymm6 is an accumulator, whose each
-; byte represents a running count
-; of 127s at that position in the
-; input chunk
+; ymm6 is an accumulator, whose bytes
+; represents a running count of 127s
+; at that position in the input chunk
 vpsubb       %ymm4, %ymm6, %ymm6
 ```
 
 With this, we iterate over 32-byte chunks of the input and:
 * Load the chunk with `vmovntdqa` (it's a non-temporal move just for style points, it doesn't make a difference to runtime).
-* Compare each byte in the chunk with `127` using `vpcmpeqb`, giving us back `0xFF` (aka `-1`) where the byte is equal to `127` and `0x00` elsewhere. For example `[125, 126, 127, 128]` becomes `[0, 0, -1, 0]`.
-* Substract the result of the comparison from an accumulator. Continuing the example above and assuming a zeroed accumulator, we'd get `[0, 0, 1, 0]`.
+* Compare each byte in the chunk with `127` using `vpcmpeqb`, giving us back `0xFF` (aka `-1`) where the byte is equal to `127` and `0x00` elsewhere. For example `[125, 126, 127, 128, ...]` becomes `[0, 0, -1, 0, ...]`.
+* Substract the result of the comparison from an accumulator. Continuing the example above and assuming a zeroed accumulator, we'd get `[0, 0, 1, 0, ...]`.
 
 Then, every once in a while, to avoid this narrow accumulator overflowing, we dump it into a wider one with the following:
 
@@ -65,19 +62,17 @@ vpsadbw      %ymm1,%ymm6,%ymm6
 vpaddq       %ymm3,%ymm6,%ymm3
 ```
 
-`vpsadbw` sums each eight bytes in the accumulator together into four 64-bit numbers, then `vpadddq` sums it with a wider accumulator, that we now won't overflow and that we extract at the end to arrive at the final count.
+`vpsadbw` sums each eight bytes in the accumulator together into four 64-bit numbers, then `vpadddq` sums it with a wider accumulator, that we know won't overflow and that we extract at the end to arrive at the final count.
 
 So far nothing revolutionary. In fact you can find this kind of approach on StackOverflow: [How to count character occurrences using SIMD](https://stackoverflow.com/questions/54541129/how-to-count-character-occurrences-using-simd).
 
 ## The Magic Sauce
 
-The thing with this challenge is, we do so little computation it's almost entirely memory bound. Further, we're really bound by the number of load slots we can fill.
+The thing with this challenge is, we do so little computation it's almost entirely memory bound. I was reading through the typo-ridden Intel Optimization Manual looking for anything memory related when, on page 788, I encountered a description of the 4 hardware prefetches. Three of them seemed to help purely with sequential access (what I was already doing), but one, the "Streamer", had an interesting nuance:
 
-A first came up on the following idea when reading through the typo-ridden Intel Optimization Manual. On page 788 it describes the 4 hardware prefetches, which mostly seem to help with sequential access pattern, except for the "Streamer" prefetcher, which:
+> "Detects and maintains up to 32 streams of data accesses. For each 4K byte page, you can maintain one forward and one backward stream can be maintained."
 
-"Detects and maintains up to 32 streams of data accesses. For each 4K byte page, you can maintain one forward and one backward stream can be maintained."
-
-"For each 4K byte page". Can you see where this is going? Instead of processing the whole input sequentially, we'll interleave processing 4K pages. We also unroll a bit and process a whole cache line in each block.
+"For each 4K byte page". Can you see where this is going? Instead of processing the whole input sequentially, we'll interleave processing successive 4K pages. In this particular case interleaving 8 pages seems to be the optimum. We also unroll the kernel a bit and process a whole cache line (2x32 bytes) in each block.
 
 ```cpp
 #define BLOCK(offset) \
@@ -89,6 +84,8 @@ A first came up on the following idea when reading through the typo-ridden Intel
     "vpsubb       %3, %1, %1\n\t" \
 ```
 
+We put 8 these inside the main loop, with offset set to 0 through 7.
+
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200">
   <style>
     @keyframes sequential {
@@ -97,10 +94,11 @@ A first came up on the following idea when reading through the typo-ridden Intel
     }
     @keyframes interleaved {
       0% { transform: translateX(0); }
-      100% { transform: translateX(75px); }
+      100% { transform: translateX(35px); }
     }
     .sequential { animation: sequential 4s linear infinite; }
     .interleaved { animation: interleaved 4s linear infinite; }
+    text { font-family: Arial, sans-serif; font-size: 14px; }
   </style>
   
   <!-- Sequential access -->
@@ -110,19 +108,27 @@ A first came up on the following idea when reading through the typo-ridden Intel
   
   <!-- Interleaved access -->
   <g transform="translate(40, 100)">
-    <rect x="0" y="0" width="80" height="40" fill="#e0e0e0" stroke="#000" />
-    <rect x="80" y="0" width="80" height="40" fill="#e0e0e0" stroke="#000" />
-    <rect x="160" y="0" width="80" height="40" fill="#e0e0e0" stroke="#000" />
-    <rect x="240" y="0" width="80" height="40" fill="#e0e0e0" stroke="#000" />
+    <rect x="0" y="0" width="40" height="40" fill="#e0e0e0" stroke="#000" />
+    <rect x="40" y="0" width="40" height="40" fill="#e0e0e0" stroke="#000" />
+    <rect x="80" y="0" width="40" height="40" fill="#e0e0e0" stroke="#000" />
+    <rect x="120" y="0" width="40" height="40" fill="#e0e0e0" stroke="#000" />
+    <rect x="160" y="0" width="40" height="40" fill="#e0e0e0" stroke="#000" />
+    <rect x="200" y="0" width="40" height="40" fill="#e0e0e0" stroke="#000" />
+    <rect x="240" y="0" width="40" height="40" fill="#e0e0e0" stroke="#000" />
+    <rect x="280" y="0" width="40" height="40" fill="#e0e0e0" stroke="#000" />
     <rect class="interleaved" x="0" y="0" width="5" height="40" fill="#4ecdc4" />
+    <rect class="interleaved" x="40" y="0" width="5" height="40" fill="#4ecdc4" />
     <rect class="interleaved" x="80" y="0" width="5" height="40" fill="#4ecdc4" />
+    <rect class="interleaved" x="120" y="0" width="5" height="40" fill="#4ecdc4" />
     <rect class="interleaved" x="160" y="0" width="5" height="40" fill="#4ecdc4" />
+    <rect class="interleaved" x="200" y="0" width="5" height="40" fill="#4ecdc4" />
     <rect class="interleaved" x="240" y="0" width="5" height="40" fill="#4ecdc4" />
+    <rect class="interleaved" x="280" y="0" width="5" height="40" fill="#4ecdc4" />
   </g>
-  <text x="200" y="155" text-anchor="middle">Interleaved Access (4 pages)</text>
+  <text x="200" y="155" text-anchor="middle">Interleaved Access (8 pages)</text>
 </svg>
 
-One additional thing we'll add is a prefetch:
+One other small thing: we add a prefetch for 4 cache lines ahead:
 
 ```cpp
 #define BLOCK(offset) \
@@ -135,64 +141,61 @@ One additional thing we'll add is a prefetch:
     "prefetcht0   " #offset " * 4096 + 4 * 64 (%6, %2, 1)\n\t"
 ```
 
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120">
   <style>
     @keyframes interleaved {
       0% { transform: translateX(0); }
-      100% { transform: translateX(75px); }
+      100% { transform: translateX(35px); }
     }
     .interleaved { animation: interleaved 4s linear infinite; }
     .prefetch { animation: interleaved 4s linear infinite; }
     text { font-family: Arial, sans-serif; font-size: 14px; }
   </style>
   
-  <!-- Interleaved access without prefetch -->
-  <g transform="translate(40, 20)">
-    <rect x="0" y="0" width="80" height="40" fill="#e0e0e0" stroke="#000" />
-    <rect x="80" y="0" width="80" height="40" fill="#e0e0e0" stroke="#000" />
-    <rect x="160" y="0" width="80" height="40" fill="#e0e0e0" stroke="#000" />
-    <rect x="240" y="0" width="80" height="40" fill="#e0e0e0" stroke="#000" />
-    <rect class="interleaved" x="0" y="0" width="5" height="40" fill="#4ecdc4" />
-    <rect class="interleaved" x="80" y="0" width="5" height="40" fill="#4ecdc4" />
-    <rect class="interleaved" x="160" y="0" width="5" height="40" fill="#4ecdc4" />
-    <rect class="interleaved" x="240" y="0" width="5" height="40" fill="#4ecdc4" />
-  </g>
-  <text x="200" y="75" text-anchor="middle">Interleaved Access without Prefetch</text>
-  
   <!-- Interleaved access with prefetch -->
-  <g transform="translate(40, 120)">
-    <rect x="0" y="0" width="80" height="40" fill="#e0e0e0" stroke="#000" />
-    <rect x="80" y="0" width="80" height="40" fill="#e0e0e0" stroke="#000" />
-    <rect x="160" y="0" width="80" height="40" fill="#e0e0e0" stroke="#000" />
-    <rect x="240" y="0" width="80" height="40" fill="#e0e0e0" stroke="#000" />
+  <g transform="translate(40, 20)">
+    <rect x="0" y="0" width="40" height="40" fill="#e0e0e0" stroke="#000" />
+    <rect x="40" y="0" width="40" height="40" fill="#e0e0e0" stroke="#000" />
+    <rect x="80" y="0" width="40" height="40" fill="#e0e0e0" stroke="#000" />
+    <rect x="120" y="0" width="40" height="40" fill="#e0e0e0" stroke="#000" />
+    <rect x="160" y="0" width="40" height="40" fill="#e0e0e0" stroke="#000" />
+    <rect x="200" y="0" width="40" height="40" fill="#e0e0e0" stroke="#000" />
+    <rect x="240" y="0" width="40" height="40" fill="#e0e0e0" stroke="#000" />
+    <rect x="280" y="0" width="40" height="40" fill="#e0e0e0" stroke="#000" />
     <rect class="prefetch" x="10" y="0" width="5" height="40" fill="#a9a9a9" opacity="0.5" />
+    <rect class="prefetch" x="50" y="0" width="5" height="40" fill="#a9a9a9" opacity="0.5" />
     <rect class="prefetch" x="90" y="0" width="5" height="40" fill="#a9a9a9" opacity="0.5" />
+    <rect class="prefetch" x="130" y="0" width="5" height="40" fill="#a9a9a9" opacity="0.5" />
     <rect class="prefetch" x="170" y="0" width="5" height="40" fill="#a9a9a9" opacity="0.5" />
-    <svg x="240" y="0" width="80" height="40" overflow="hidden">
+    <rect class="prefetch" x="210" y="0" width="5" height="40" fill="#a9a9a9" opacity="0.5" />
+    <rect class="prefetch" x="250" y="0" width="5" height="40" fill="#a9a9a9" opacity="0.5" />
+    <svg x="280" y="0" width="40" height="40" overflow="hidden">
       <rect class="prefetch" x="10" y="0" width="5" height="40" fill="#a9a9a9" opacity="0.5" />
     </svg>
     <rect class="interleaved" x="0" y="0" width="5" height="40" fill="#4ecdc4" />
+    <rect class="interleaved" x="40" y="0" width="5" height="40" fill="#4ecdc4" />
     <rect class="interleaved" x="80" y="0" width="5" height="40" fill="#4ecdc4" />
+    <rect class="interleaved" x="120" y="0" width="5" height="40" fill="#4ecdc4" />
     <rect class="interleaved" x="160" y="0" width="5" height="40" fill="#4ecdc4" />
+    <rect class="interleaved" x="200" y="0" width="5" height="40" fill="#4ecdc4" />
     <rect class="interleaved" x="240" y="0" width="5" height="40" fill="#4ecdc4" />
+    <rect class="interleaved" x="280" y="0" width="5" height="40" fill="#4ecdc4" />
   </g>
-  <text x="200" y="175" text-anchor="middle">Interleaved Access with Prefetch</text>
+  <text x="200" y="75" text-anchor="middle">Interleaved Access with Prefetch</text>
 </svg>
 
+This improves the score on HighLoad by some 15%, but if your kernel does even less computation than this one, let's say you `padd` the bytes to find their sum modulo 255, you can get up to 30% gain with this. Pretty cool!
+
+There's one more thing that wasn't relevant in this particular context, but might be for you: memory rank. Memory rank is a set of DRAM chips connected to the same [chip select](https://en.wikipedia.org/wiki/Chip_select). If all your reads are within one rank, you're good. If you're accessing multiple ranks you'll get a pipeline stall as you're switching over to different set of chips, which slows you down. I think ranks are generally 128KB, so you want to make sure your iterating over 128KB aligned data (but I'm really out of my depth here, let me know if I'm wrong!).
 
 
 
-
-
-Mention how much fater it is when fully memory bounds vs. how much in HighLoad.
-
-Test interleaving 8 pages across rank.
 
 Current: 15,748
 Serial: 18,182
 
 ## The Source
-```
+```cpp
 #define BLOCK_COUNT 8
 
 #define PAGE_SIZE 4096
