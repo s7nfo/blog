@@ -8,13 +8,13 @@ title:  "Counting Bytes Faster Than You'd Think Possible"
   <a href="https://twitter.com/s7nfo/status/1814337750109237399"></a> 
 </blockquote>
 
-[Summing ASCII Encoded Integers on Haswell at the Speed of memcpy](https://blog.mattstuchlik.com/2024/07/12/summing-integers-fast.html) turned out more popular than I expected, which inspired me to take on another challenge on HighLoad: [Counting uint8s](https://highload.fun/tasks/5). I'm currently only #13 on the leaderboard, ~7% behind #1, but already learned some interesting things. In this post I'll describe my complete solution including a suprising memory read pattern that achieves up to ~30% higher transfer rates on fully memory bound workloads compared to naive sequential access (It's free real estate!!).
+[Summing ASCII Encoded Integers on Haswell at the Speed of memcpy](https://blog.mattstuchlik.com/2024/07/12/summing-integers-fast.html) turned out more popular than I expected, which inspired me to take on another challenge on HighLoad: [Counting uint8s](https://highload.fun/tasks/5). I'm currently only #13 on the leaderboard, ~7% behind #1, but I already learned some interesting things. In this post I'll describe my complete solution including a surprising memory read pattern that achieves up to ~30% higher transfer rates on fully memory bound workloads compared to naive sequential access (It's free real estate!!).
 
-As before, the program is tuned for the HighLoad system: Intel Xeon E3-1271 v3 @ 3.60GHz, 512MB RAM, Ubuntu 20.04. It only uses AVX2, no AVX512. As presented, it produces correct result with probability < 1, though very close to 1 and can be tuned to get to 1 in exchange for a very minor performance hit.
+As before, the program is tuned to the input spec and for the HighLoad system: Intel Xeon E3-1271 v3 @ 3.60GHz, 512MB RAM, Ubuntu 20.04. It only uses AVX2, no AVX512. As presented, it produces correct result with probability < 1, though very close to 1 and can be tuned to get to 1 in exchange for a very minor performance hit.
 
 ## The Challenge
 
-> "Print the number of bytes whose value equals 127 in a 250MB stream sent to standard input."
+> "Print the number of bytes whose value equals 127 in a 250MB stream of bytes uniformly sampled from [0, 255] sent to standard input."
 
 Nothing much to it! The presented solution is ~550x faster than the following naive program.
 
@@ -62,7 +62,7 @@ vpsadbw      %ymm1,%ymm6,%ymm6
 vpaddq       %ymm3,%ymm6,%ymm3
 ```
 
-`vpsadbw` sums each eight bytes in the accumulator together into four 64-bit numbers, then `vpadddq` sums it with a wider accumulator, that we know won't overflow and that we extract at the end to arrive at the final count.
+`vpsadbw` sums every eight bytes in the accumulator together into four 64-bit numbers, then `vpadddq` sums it with a wider accumulator, that we know won't overflow and that we extract at the end to arrive at the final count.
 
 So far nothing revolutionary. In fact you can find this kind of approach on StackOverflow: [How to count character occurrences using SIMD](https://stackoverflow.com/questions/54541129/how-to-count-character-occurrences-using-simd).
 
@@ -84,7 +84,7 @@ The thing with this challenge is, we do so little computation it's almost entire
     "vpsubb       %3, %1, %1\n\t" \
 ```
 
-We put 8 these inside the main loop, with offset set to 0 through 7.
+We put 8 of these inside the main loop, with the offset set to 0 through 7.
 
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200">
   <style>
@@ -186,7 +186,7 @@ One other small thing: we add a prefetch for 4 cache lines ahead:
 
 This improves the score on HighLoad by some 15%, but if your kernel does even less computation than this one, let's say you `padd` the bytes to find their sum modulo 255, you can get up to 30% gain with this. Pretty cool!
 
-There's one more thing that wasn't relevant in this particular context, but might be for you: memory rank. Memory rank is a set of DRAM chips connected to the same [chip select](https://en.wikipedia.org/wiki/Chip_select). If all your reads are within one rank, you're good. If you're accessing multiple ranks you'll get a pipeline stall as you're switching over to different set of chips, which slows you down. I think ranks are generally 128KB, so you want to make sure your iterating over 128KB aligned data (but I'm really out of my depth here, let me know if I'm wrong!).
+There's one more thing that wasn't relevant in this particular context, but might be for you: memory rank. Memory rank is a set of DRAM chips connected to the same [chip select](https://en.wikipedia.org/wiki/Chip_select). If all your reads are within one rank, you're good. If you're accessing multiple ranks you'll get a pipeline stall as you're switching over to different sets of chips, which slows you down. I think ranks are generally 128KB, so you want to make sure you're iterating over 128KB aligned data (but I'm really out of my depth here, let me know if I'm wrong!).
 
 
 
