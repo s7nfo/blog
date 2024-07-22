@@ -8,7 +8,7 @@ title:  "Counting Bytes Faster Than You'd Think Possible"
   <a href="https://twitter.com/s7nfo/status/1814337750109237399"></a> 
 </blockquote>
 
-[Summing ASCII Encoded Integers on Haswell at the Speed of memcpy](https://blog.mattstuchlik.com/2024/07/12/summing-integers-fast.html) turned out more popular than I expected, which inspired me to take on another challenge on HighLoad: [Counting uint8s](https://highload.fun/tasks/5). I'm currently only #13 on the leaderboard, ~7% behind #1, but I already learned some interesting things. In this post I'll describe my complete solution including a surprising memory read pattern that achieves up to ~30% higher transfer rates on fully memory bound workloads compared to naive sequential access (It's free real estate!!).
+[Summing ASCII Encoded Integers on Haswell at the Speed of memcpy](https://blog.mattstuchlik.com/2024/07/12/summing-integers-fast.html) turned out more popular than I expected, which inspired me to take on another challenge on HighLoad: [Counting uint8s](https://highload.fun/tasks/5). I'm currently only #13 on the leaderboard, ~7% behind #1, but I already learned some interesting things. In this post I'll describe my complete solution ([skip to that](#the-source)) including a surprising single core memory read pattern that achieves up to ~30% higher transfer rates on fully memory bound workloads compared to naive sequential access while being strangely under-discussed on the Internet ([skip to that](#the-magic-sauce)).
 
 As before, the program is tuned to the input spec and for the HighLoad system: Intel Xeon E3-1271 v3 @ 3.60GHz, 512MB RAM, Ubuntu 20.04. It only uses AVX2, no AVX512. As presented, it produces correct result with probability < 1, though very close to 1 and can be tuned to get to 1 in exchange for a very minor performance hit.
 
@@ -68,7 +68,7 @@ So far nothing revolutionary. In fact you can find this kind of approach on Stac
 
 ## The Magic Sauce
 
-The thing with this challenge is, we do so little computation it's almost entirely memory bound. I was reading through the typo-ridden Intel Optimization Manual looking for anything memory related when, on page 788, I encountered a description of the 4 hardware prefetches. Three of them seemed to help purely with sequential access (what I was already doing), but one, the "Streamer", had an interesting nuance:
+The thing with this challenge is, we do so little computation it's almost entirely memory bound. I was reading through the typo-ridden Intel Optimization Manual looking for anything memory related when, on page 788, I encountered a description of the 4 hardware prefetchers. Three of them seemed to help purely with sequential access (what I was already doing), but one, the "Streamer", had an interesting nuance:
 
 > "Detects and maintains up to 32 streams of data accesses. For each 4K byte page, you can maintain one forward and one backward stream can be maintained."
 
@@ -84,7 +84,7 @@ The thing with this challenge is, we do so little computation it's almost entire
     "vpsubb       %3, %1, %1\n\t" \
 ```
 
-We put 8 of these inside the main loop, with the offset set to 0 through 7.
+We put 8 of these inside the main loop, with the `offset` set to 0 through 7.
 
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200">
   <style>
@@ -184,21 +184,31 @@ One other small thing: we add a prefetch for 4 cache lines ahead:
   <text x="200" y="75" text-anchor="middle">Interleaved Access with Prefetch</text>
 </svg>
 
-This improves the score on HighLoad by some 15%, but if your kernel does even less computation than this one, let's say you `padd` the bytes to find their sum modulo 255, you can get up to 30% gain with this. Pretty cool!
+This improves the score on HighLoad by some 15%, but if your kernel does even less computation than this one, let's say you `vpaddb` the bytes to find their sum modulo 255, you can get up to 30% gain with this. Pretty cool for such a simple change!
 
-There's one more thing that wasn't relevant in this particular context, but might be for you: memory rank. Memory rank is a set of DRAM chips connected to the same [chip select](https://en.wikipedia.org/wiki/Chip_select). If all your reads are within one rank, you're good. If you're accessing multiple ranks you'll get a pipeline stall as you're switching over to different sets of chips, which slows you down. I think ranks are generally 128KB, so you want to make sure you're iterating over 128KB aligned data (but I'm really out of my depth here, let me know if I'm wrong!).
+There's one more thing that wasn't relevant in this particular context (everything's aligned correctly by default), but might be for you: memory rank. Memory rank is a set of DRAM chips connected to the same [chip select](https://en.wikipedia.org/wiki/Chip_select). If all your reads are within one rank, you're good. If you're accessing multiple ranks you'll get a pipeline stall as you're switching over to different sets of chips, which slows you down. I think ranks are generally 128KB, so you want to make sure you're iterating over 128KB aligned data.
+
+## Conclusion
+
+This is surprisingly under discussed, I think think many tools measure single core memory bandwidth the wrong way.
 
 
-
-
-Current: 15,748
-Serial: 18,182
 
 ## The Source
 ```cpp
-#define BLOCK_COUNT 8
+#include <iostream>
+#include <cstdint>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <immintrin.h>
+#include <cassert>
 
+#define BLOCK_COUNT 8
 #define PAGE_SIZE 4096
+#define TARGET_BYTE 127
+#define RANK_SIZE (32 * PAGE_SIZE)
 
 #define BLOCKS_8 \
     BLOCK(0)  BLOCK(1)  BLOCK(2)  BLOCK(3) \
@@ -213,39 +223,32 @@ Serial: 18,182
     "vpsubb       %3,%1,%1\n\t" \
     "prefetcht0   " #offset "*4096+4*64(%6,%2,1)\n\t"
 
+
 static inline
 __m256i hsum_epu8_epu64(__m256i v) {
     return _mm256_sad_epu8(v, _mm256_setzero_si256());
 }
 
-
 int main() {
     struct stat sb;
     fstat(STDIN_FILENO, &sb);
+    assert(fstat(STDIN_FILENO, &sb) != -1);
     size_t length = sb.st_size;
-    char* start = static_cast<char*>(mmap(nullptr, length, PROT_READ, MAP_PRIVATE | MAP_POPULATE, STDIN_FILENO, 0));
 
-    if (start == MAP_FAILED) {
-        return 1;
-    }
+    char* start = static_cast<char*>(mmap(nullptr, length, PROT_READ, MAP_PRIVATE | MAP_POPULATE, STDIN_FILENO, 0));
+    assert(start != MAP_FAILED);
+    assert(reinterpret_cast<uintptr_t>(start) % RANK_SIZE == 0);
 
     uint64_t count = 0;
     __m256i sum64 = _mm256_setzero_si256();
-    size_t i = 0;
+    size_t offset = 0;
 
-    __m256i compare_value = _mm256_set1_epi8(127);
+    __m256i compare_value = _mm256_set1_epi8(TARGET_BYTE);
     __m256i acc1 = _mm256_set1_epi8(0);
     __m256i acc2 = _mm256_set1_epi8(0);
-    __m256i temp1 = _mm256_set1_epi8(0);
-    __m256i temp2 = _mm256_set1_epi8(0);
+    __m256i temp1, temp2;
 
-    // Align to page boundary
-    while (reinterpret_cast<uintptr_t>(start + i) % (1 * PAGE_SIZE) != 0) {
-        if (start[i] == 127) ++count;
-        ++i;
-    }
-
-    for (; i + BLOCK_COUNT*PAGE_SIZE <= length;) {
+    while (offset + BLOCK_COUNT*PAGE_SIZE <= length) {
         int batch = PAGE_SIZE / 64;
         asm volatile(
             ".align 16\n\t"
@@ -256,12 +259,12 @@ int main() {
             "add          $0x40, %2\n\t"
             "dec          %5\n\t"
             "jg           0b"
-            : "+x" (acc1), "+x" (acc2), "+r" (i), "+x" (temp1), "+x" (temp2), "+r" (batch)
+            : "+x" (acc1), "+x" (acc2), "+r" (offset), "+x" (temp1), "+x" (temp2), "+r" (batch)
             : "r" (start), "x" (compare_value)
             : "cc", "memory"
         );
 
-        i += (BLOCK_COUNT - 1)*PAGE_SIZE;
+        offset += (BLOCK_COUNT - 1)*PAGE_SIZE;
 
         sum64 = _mm256_add_epi64(sum64, hsum_epu8_epu64(acc1));
         sum64 = _mm256_add_epi64(sum64, hsum_epu8_epu64(acc2));
@@ -278,8 +281,8 @@ int main() {
     count += _mm256_extract_epi64(sum64, 2);
     count += _mm256_extract_epi64(sum64, 3);
 
-    for (; i < length; ++i) {
-        if (start[i] == 127) {
+    for (; offset < length; ++offset) {
+        if (start[offset] == TARGET_BYTE) {
             ++count;
         }
     }
