@@ -8,6 +8,8 @@ title:  "Counting Bytes Faster Than You'd Think Possible"
   <a href="https://twitter.com/s7nfo/status/1814337750109237399"></a> 
 </blockquote>
 
+
+
 [Summing ASCII Encoded Integers on Haswell at the Speed of memcpy](https://blog.mattstuchlik.com/2024/07/12/summing-integers-fast.html) turned out more popular than I expected, which inspired me to take on another challenge on HighLoad: [Counting uint8s](https://highload.fun/tasks/5). I'm currently only #13 on the leaderboard, ~7% behind #1, but I already learned some interesting things. In this post I'll describe my complete solution ([skip to that](#the-source)) including a surprising single core memory read pattern that achieves up to ~30% higher transfer rates on fully memory bound workloads compared to naive sequential access while being strangely under-discussed on the Internet ([skip to that](#the-magic-sauce)).
 
 As before, the program is tuned to the input spec and for the HighLoad system: Intel Xeon E3-1271 v3 @ 3.60GHz, 512MB RAM, Ubuntu 20.04. It only uses AVX2, no AVX512. As presented, it produces correct result with probability < 1, though very close to 1 and can be tuned to get to 1 in exchange for a very minor performance hit.
@@ -68,7 +70,7 @@ So far nothing revolutionary. In fact you can find this kind of approach on Stac
 
 ## The Magic Sauce
 
-The thing with this challenge is, we do so little computation it's almost entirely memory bound. I was reading through the typo-ridden Intel Optimization Manual looking for anything memory related when, on page 788, I encountered a description of the 4 hardware prefetchers. Three of them seemed to help purely with sequential access (what I was already doing), but one, the "Streamer", had an interesting nuance:
+The thing with this challenge is, we do so little computation it's significantly memory bound. I was reading through the typo-ridden Intel Optimization Manual looking for anything memory related when, on page 788, I encountered a description of the 4 hardware prefetchers. Three of them seemed to help purely with sequential access (what I was already doing), but one, the "Streamer", had an interesting nuance:
 
 > "Detects and maintains up to 32 streams of data accesses. For each 4K byte page, you can maintain one forward and one backward stream can be maintained."
 
@@ -128,7 +130,9 @@ We put 8 of these inside the main loop, with the `offset` set to 0 through 7.
   <text x="200" y="155" text-anchor="middle">Interleaved Access (8 pages)</text>
 </svg>
 
-One other small thing: we add a prefetch for 4 cache lines ahead:
+This improves the score on HighLoad by some 15%, but if your kernel is even more memory bound, let's say you just `vpaddb` the bytes to find their sum modulo 255, you can get up to 30% gain with this. Pretty cool for such a simple change!
+
+Anyway, one other small thing: we add a prefetch for 4 cache lines ahead:
 
 ```cpp
 #define BLOCK(offset) \
@@ -184,15 +188,7 @@ One other small thing: we add a prefetch for 4 cache lines ahead:
   <text x="200" y="75" text-anchor="middle">Interleaved Access with Prefetch</text>
 </svg>
 
-This improves the score on HighLoad by some 15%, but if your kernel does even less computation than this one, let's say you `vpaddb` the bytes to find their sum modulo 255, you can get up to 30% gain with this. Pretty cool for such a simple change!
-
-There's one more thing that wasn't relevant in this particular context (everything's aligned correctly by default), but might be for you: memory rank. Memory rank is a set of DRAM chips connected to the same [chip select](https://en.wikipedia.org/wiki/Chip_select). If all your reads are within one rank, you're good. If you're accessing multiple ranks you'll get a pipeline stall as you're switching over to different sets of chips, which slows you down. I think ranks are generally 128KB, so you want to make sure you're iterating over 128KB aligned data.
-
-## Conclusion
-
-This is surprisingly under discussed, I think think many tools measure single core memory bandwidth the wrong way.
-
-
+There's one more thing that wasn't relevant in this particular context (everything's aligned correctly by default), but might be for you: memory rank. Memory rank is a set of DRAM chips connected to the same [chip select](https://en.wikipedia.org/wiki/Chip_select). If all your reads are within one rank, you're good. If you're accessing multiple ranks you'll get a pipeline stall as you're switching over to different sets of chips, which slows you down. I think ranks are generally 128KB of contiguous memory, so you want to make sure you're iterating over 128KB aligned data.
 
 ## The Source
 ```cpp
@@ -291,3 +287,6 @@ int main() {
     return 0;
 }
 ```
+
+## Conclusion
+The page-interleaved, rank-aligned read patterns seems surprisingly under-discussed and I don't remember ever seeing it used in the wild. Interesting! If you're aware of it being used anywhere, please let me know, I'd love to see it!
