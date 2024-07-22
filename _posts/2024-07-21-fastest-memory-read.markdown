@@ -224,7 +224,6 @@ __m256i hsum_epu8_epu64(__m256i v) {
 
 int main() {
     struct stat sb;
-    fstat(STDIN_FILENO, &sb);
     assert(fstat(STDIN_FILENO, &sb) != -1);
     size_t length = sb.st_size;
 
