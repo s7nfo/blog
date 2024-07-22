@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Summing ASCII encoded integers on Haswell at the speed of memcpy"
+title:  "Summing ASCII Encoded Integers on Haswell at the Speed of memcpy"
 ---
 
 <style>
