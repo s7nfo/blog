@@ -16,7 +16,7 @@ As before, the program is tuned to the input spec and for the HighLoad system: I
 
 ## The Challenge
 
-> "Print the number of bytes whose value equals 127 in a 250MB stream of bytes uniformly sampled from [0, 255] sent to standard input."
+> "Print the number of bytes whose value equals 127 in a 250MB file full of bytes uniformly sampled from [0, 255] sent to standard input."
 
 Nothing much to it! The solution presented here is ~550x faster than the following naive program.
 
@@ -186,6 +186,10 @@ Anyway, one other small thing: we add a prefetch for 4 cache lines ahead:
   </g>
   <text x="200" y="75" text-anchor="middle">Interleaved Access with Prefetch</text>
 </svg>
+
+Why 4 lines ahead? I don't have a good explanation for that, it's simply what performs best. Below is a plot of runtime of the solution with prefetch strides from 0 to 100 on a different system (hence why the optimum is elsewhere here). As you can see the curve is quite complex.
+
+![Prefetch Stride Experiment](/assets/prefetch_stride_experiment.png)
 
 ## The Source
 ```cpp
