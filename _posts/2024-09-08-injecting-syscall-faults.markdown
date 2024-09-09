@@ -52,7 +52,7 @@ with injector:
     (...)
 ```
 
-And more! In addition to the `error`, `delay_exit` and `signal` actions demonstrated above, it also supports `retval` for changing a return value without making it an error, `delay_enter` for delaying entry into a syscall rather than an exit and `poke_enter` and `poke_exit` for modifying the process memory the process memory on syscall entry or exit. See the ["Tampering" section of its man page](https://man7.org/linux/man-pages/man1/strace.1.html) for details on all these, including a description of the format of the `when` argument.
+And more! In addition to the `error`, `delay_exit` and `signal` actions demonstrated above, it also supports `retval` for changing a return value without making it an error, `delay_enter` for delaying entry into a syscall rather than an exit and `poke_enter` and `poke_exit` for modifying the process memory on syscall entry or exit. See the ["Tampering" section of strace's man page](https://man7.org/linux/man-pages/man1/strace.1.html) for details on all these, including a description of the format of the `when` argument.
 
 If you want to try this but are unsure what syscalls your code uses you can get a list of them easily with Cirron too:
 
@@ -67,12 +67,14 @@ print(t.trace)
 # [Syscall(name='write', args='1, "Hello!\\n", 7', retval='7', duration='0.000197', timestamp='1725900869.238673', pid='438862')]
 ```
 
+<br>
+
 # How?
 
 Cirron implements the `Injector` in the simplest way possible: it executes `strace` with the appropriate inject options and points it to the current process. After leaving the injection context the strace process is killed. If you were to make heavy use of this, it's probably worth implementing the functionality directly, rather than executing strace every time (let me know if you'd find it useful if Cirron did this more efficiently).
 
-So how does strace do this? [Ptrace](https://en.wikipedia.org/wiki/Ptrace)! It [attaches](https://github.com/strace/strace/blob/0f9f46096fa8da84e2e6a6646cd1e326bf7e83c7/src/strace.c#L1388) to (or [seizes](https://github.com/strace/strace/blob/0f9f46096fa8da84e2e6a6646cd1e326bf7e83c7/src/strace.c#L569); dramatic!) a process with `ptrace(PTRACE_ATTACH, ...)`. This causes the traced process to stop on (among other things) entry and exit from syscalls. This then lets the tracer inspect and modify the program before letting it continue.
+So how does `strace` do this? [Ptrace](https://en.wikipedia.org/wiki/Ptrace)! It [attaches](https://github.com/strace/strace/blob/0f9f46096fa8da84e2e6a6646cd1e326bf7e83c7/src/strace.c#L1388) to (or [seizes](https://github.com/strace/strace/blob/0f9f46096fa8da84e2e6a6646cd1e326bf7e83c7/src/strace.c#L569); dramatic!) a process with `ptrace(PTRACE_ATTACH, ...)`. This causes the traced process to stop on (among other things) entry and exit from syscalls. Strace can then inspect and modify the program before letting it continue.
 
-To inject [delay](https://github.com/strace/strace/blob/0f9f46096fa8da84e2e6a6646cd1e326bf7e83c7/src/delay.c), as with `delay_enter` or `delay_exit`, strace simply waits before continuing the process.
+To inject a [delay](https://github.com/strace/strace/blob/0f9f46096fa8da84e2e6a6646cd1e326bf7e83c7/src/delay.c), as with `delay_enter` or `delay_exit`, strace simply waits before continuing the process.
 
-To modify the syscall's inputs or output it uses either `PTRACE_POKEDATA` (or [process_vm_writev](https://linux.die.net/man/2/process_vm_writev)) to mess with the traced process's memory (`poke_enter`, `poke_exit`) or `PTRACE_POKEUSER` to modify the USER area, which contains the process's registers state, which lets you, for example, change the return value (`error`, `retval`).
+To modify the syscall's inputs or output it uses either `PTRACE_POKEDATA` (or [process_vm_writev](https://linux.die.net/man/2/process_vm_writev)) to mess with the traced process's memory (`poke_enter`, `poke_exit`) or `PTRACE_POKEUSER` to modify the USER area, containing the process's registers state, which lets you, for example, change the return value (`error`, `retval`).
