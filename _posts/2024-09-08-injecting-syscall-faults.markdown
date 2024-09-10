@@ -3,7 +3,7 @@ layout: post
 title:  "Injecting syscall faults in Python and Ruby"
 ---
 
-Since syscalls are near the very bottom of any software stack, their misbehavior can be particularly hard to test for. Stuff like running out of disk space, network connections timing out or bumping into system limits all ultimately manifest as a syscall failing somewhere. It sure would be nice if you could simulate these situations easily.
+Since syscalls are near the very bottom of any software stack, their misbehavior can be particularly hard to test for. Stuff like running out of disk space, network connections timing out or bumping into system limits all ultimately manifest as a syscall failing somewhere. If you want your code to be resilient to these kinds of failures, it sure would be nice if you could simulate these situations easily.
 
 Now, you might already know `strace` lets you [trace system calls](https://blog.mattstuchlik.com/2024/02/16/counting-syscalls-in-python.html), but did you know it can also change their behavior? You can modify their input and output, inject errors and add time delays (though be aware of the [limitations](#limitations)).
 
@@ -26,7 +26,7 @@ with injector:
 # From here on "openat" behaves normally again.
 ```
 
-Inject occasional errors and delays to you network operations.
+Inject occasional errors and delays to network operations.
 
 ```python
 (...)
@@ -83,4 +83,4 @@ To modify the syscall's inputs or output it uses either `PTRACE_POKEDATA` (or [p
 
 There's the obvious performance impact, particularly if simply using `strace` instead of using `ptrace` directly.
 
-Also consider that making a syscall fail this way does not remove the side effects it might have: making a "write" call return an error will still (possibly) perform the "write", it will just appear to have failed to the application. Along the same lines the delay injections delay before syscall entry or after exit, which may have very different impact to delaying something in the middle of the call.
+Also consider that making a syscall fail this way does not remove the side effects it might have: making a "write" call return an error will still (possibly) perform the "write", it will just appear to have failed to the application. Along the same lines the delay injections delay before syscall entry or after exit, which may have very different impact compared to delaying something in the middle of the call.
