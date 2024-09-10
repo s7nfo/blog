@@ -9,7 +9,7 @@ Now, you might already know `strace` lets you [trace system calls](https://blog.
 
 To demonstrate how it could be useful, I've added the ability to easily use this functionality from Python and Ruby to [Cirron](https://github.com/s7nfo/Cirron) (my grab-bag of a project). Now you can now do things like:
 
-Test how code handles insufficient space.
+Test how code handles insufficient space (I'll use Python for demonstration purposes here, check out the [readme](https://github.com/s7nfo/Cirron/blob/master/README.md) for examples of how to do this in Ruby).
 
 ```python
 from cirron import Injector
