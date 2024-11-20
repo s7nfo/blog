@@ -10,9 +10,9 @@ title:  "Counting Bytes Faster Than You'd Think Possible"
 
 
 
-[Summing ASCII Encoded Integers on Haswell at the Speed of memcpy](https://blog.mattstuchlik.com/2024/07/12/summing-integers-fast.html) turned out more popular than I expected, which inspired me to take on another challenge on HighLoad: [Counting uint8s](https://highload.fun/tasks/5). I'm currently only #13 on the leaderboard, ~7% behind #1, but I already learned some interesting things. In this post I'll describe my complete solution ([skip to that](#the-source)) including a surprising memory read pattern that achieves up to ~30% higher transfer rates on fully memory bound, single core workloads compared to naive sequential access, while apparently not being widely known ([skip to that](#the-magic-sauce)).
+["Summing ASCII Encoded Integers on Haswell at the Speed of memcpy"](https://blog.mattstuchlik.com/2024/07/12/summing-integers-fast.html) turned out more popular than I expected, which inspired me to take on another challenge on HighLoad: [Counting uint8s](https://highload.fun/tasks/5). I'm currently only #13 on the leaderboard, ~7% behind #1, but I have already learned some interesting things. In this post I'll describe my complete solution ([skip to that](#the-source)) including a surprising memory read pattern that achieves up to ~30% higher transfer rates on fully memory bound, single core workloads compared to naive sequential access, while apparently not being widely known ([skip to that](#the-magic-sauce)).
 
-As before, the program is tuned to the input spec and for the HighLoad system: Intel Xeon E3-1271 v3 @ 3.60GHz, 512MB RAM, Ubuntu 20.04. It only uses AVX2, no AVX512.
+As before, the program is tuned to the input spec and the HighLoad system: Intel Xeon E3-1271 v3 @ 3.60GHz, 512MB RAM, Ubuntu 20.04. It only uses AVX2, no AVX512.
 
 ## The Challenge
 
@@ -43,7 +43,7 @@ vmovntdqa    (%rax, %rsi, 1), %ymm4
 ; ymm2 is a vector full of 127
 vpcmpeqb     %ymm4, %ymm2, %ymm4
 ; ymm6 is an accumulator, whose bytes
-; represents a running count of 127s
+; represent a running count of 127s
 ; at that position in the input chunk
 vpsubb       %ymm4, %ymm6, %ymm6
 ```
