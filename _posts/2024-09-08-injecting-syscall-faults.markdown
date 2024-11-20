@@ -3,13 +3,13 @@ layout: post
 title:  "Injecting syscall faults in Python and Ruby"
 ---
 
-Since syscalls are near the very bottom of any software stack, their misbehavior can be particularly hard to test for. Stuff like running out of disk space, network connections timing out or bumping into system limits all ultimately manifest as a syscall failing somewhere. If you want your code to be resilient to these kinds of failures, it sure would be nice if you could simulate these situations easily.
+Since syscalls are near the very bottom of any software stack, their misbehavior can be particularly hard to test for. Stuff like running out of disk space, network connections timing out, or bumping into system limits all ultimately manifest as a syscall failing somewhere. If you want your code to be resilient to these kinds of failures, it sure would be nice if you could simulate these situations easily.
 
 Now, you might already know `strace` lets you [trace system calls](https://blog.mattstuchlik.com/2024/02/16/counting-syscalls-in-python.html), but did you know it can also change their behavior? You can modify their input and output, inject errors and add time delays (though be aware of the [limitations](#limitations)).
 
-To demonstrate how it could be useful, I've added the ability to easily use this functionality from Python and Ruby to [Cirron](https://github.com/s7nfo/Cirron) (my grab-bag of a project). Now you can now do things like:
+To demonstrate how it could be useful, I've added the ability to easily use this functionality from Python and Ruby to [Cirron](https://github.com/s7nfo/Cirron) (my grab-bag of a project, that can also [trace syscalls](https://blog.mattstuchlik.com/2024/02/16/counting-syscalls-in-python.html) and [track performance counters](https://blog.mattstuchlik.com/2024/02/08/counting-cpu-instructions-in-python.html)). Now you can do things like:
 
-Test how code handles insufficient space (I'll use Python for demonstration purposes here, check out the [readme](https://github.com/s7nfo/Cirron/blob/master/README.md) for examples of how to do this in Ruby).
+Test how code handles insufficient space. (I'll use Python for demonstration purposes here, check out the [readme](https://github.com/s7nfo/Cirron/blob/master/README.md) for examples of how to do this in Ruby.)
 
 ```python
 from cirron import Injector
@@ -83,4 +83,4 @@ To modify the syscall's inputs or output it uses either `PTRACE_POKEDATA` (or [p
 
 There's the obvious performance impact, particularly if simply using `strace` instead of using `ptrace` directly.
 
-Also consider that making a syscall fail this way does not remove the side effects it might have: making a "write" call return an error will still (possibly) perform the "write", it will just appear to have failed to the application. Along the same lines the delay injections delay before syscall entry or after exit, which may have very different impact compared to delaying something in the middle of the call.
+Also consider that making a syscall fail this way does not remove the side effects it might have: making a "write" call return an error will still (possibly) perform the "write", it will just appear to have failed to the application. Similarly, delay injections occur either before syscall entry or after exit, which may impact the program differently compared to introducing a delay during the syscall itself.
