@@ -14,7 +14,7 @@ As far as I know, no other Ruby tracer offers this mix of signals at this cost, 
 ## Why Trace in Production
 In a word: outliers. Sampling profilers show where a program spends its time *on average*. However, problems such as high tail latency are by definition not well represented in an average view. This is where a tracing profiler comes in handy.
 
-Let me illustrate with this sophisticated SaaS simulator that handles a bunch of API calls and records their duration:
+Let me illustrate this with a sophisticated SaaS simulator that handles a bunch of API calls and records their duration:
 
 ```
 durations = []
@@ -28,22 +28,22 @@ durations = []
 end
 ```
 
-Let’s say `api_handler` is a black box and it has a P99.9 SLA of < 10ms. Executing the code, we find:
+Let’s say `api_handler` is a black box and it has a P99.9 SLO of < 10ms. Executing the code, we find:
 
 ```
 P50 latency:     1.1 ms
 P99.9 latency: 101.3 ms
 ```
 
-Our median (P50) looks great, but the P99.9 breaches the SLA.
+Our median (P50) looks great, but the P99.9 breaches the SLO.
 
-If you care about latency, you're probably already runnign a sampling profiler, so let's see what that shows:
+If you care about latency, you're probably already running a sampling profiler, so let's see what that shows:
 
 ![Sampling Profiler Example](/assets/ruby-profiler-sampling.png)
 
-We see that two methods account for most of the runtime: `Object#a` and `Oject#b`, `a` using the vast majority of the time slice. From this, you might conclude that you should focus on optimizing `a`. In this case, that would be a waste of time!
+We see that two methods account for most of the runtime: `api_handler->Object#a` and `api_handler->Oject#b`, `a` using the vast majority of the time slice. From this, you might conclude that you should focus on optimizing `a`. In this case, that would be a waste of time!
 
-To show this, let's try inspecting a trace from one of the slow `api_handler` executions with out new profiler. First we instrument the code a little bit:
+To show this, let's try inspecting a trace from one of the slow `api_handler` executions with our new profiler. First we instrument the code:
 
 ```diff
 + require 'tracing'
@@ -55,7 +55,7 @@ To show this, let's try inspecting a trace from one of the slow `api_handler` ex
    start_time = Time.now
 +   Trace.reset
 
-   api_call
+   api_handler
 
    duration = Time.now - start_time
 +  if duration > SLA
@@ -73,7 +73,7 @@ Now whenever the duration exceeds our SLA, we save a trace. Let's look at one of
 
 And now we see the exact opposite! `b` using the vast majority of the time slice. So who's right?
 
-The `api_call` implementation was this:
+The `api_handler` implementation was this:
 
 
 ```
@@ -95,5 +95,5 @@ def b
 end
 ```
 
-The sampling profiler correctly showed that *over the whole program*, `a` uses more time, but when trying to improve tail latency that is not what we care about. The tracing profiler output is therefore much more informative.
+The sampling profiler correctly showed that *over the whole runtime*, `a` uses more time, but when trying to improve tail latency that is not what we care about. During  The tracing profiler output is therefore much more informative.
 
