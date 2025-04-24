@@ -3,6 +3,8 @@ layout: post
 title:  "[WIP] Low Overhead Ruby Tracing Profiler"
 ---
 
+> Note: this is a work-in-progress post, RSS betrayed me and let it out into the world before its time :)
+
 ![Profiler Overview](/assets/ruby-profiler-overview.png)
 
 I’ve built what I think is a pretty neat Ruby tracing profiler. It captures four event streams: Ruby function calls, system calls, thread-state changes, and garbage-collection activity while adding less than 100 ns[^0] of overhead per Ruby function call, low enough for continuous use in large-scale production systems.
