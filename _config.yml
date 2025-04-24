@@ -21,7 +21,7 @@
 title: Matt Stuchlik
 email: matej.stuchlik@gmail.com
 baseurl: "" # the subpath of your site, e.g. /blog
-url: "https://mattstuchlik.com" # the base hostname & protocol for your site, e.g. http://example.com
+url: "https://blog.mattstuchlik.com" # the base hostname & protocol for your site, e.g. http://example.com
 twitter_username: s7nfo
 github_username:  s7nfo
 
