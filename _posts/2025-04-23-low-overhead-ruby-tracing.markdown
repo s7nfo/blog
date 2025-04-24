@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "[WIP] Low Overhead Ruby Tracing Profiler"
+title:  "[WIP] Low Overhead Tracing Profiler for Ruby"
 ---
 
 > Note: this is a work-in-progress post, RSS betrayed me and let it out into the world before its time :)
