@@ -96,7 +96,7 @@ def b
 end
 ```
 
-The sampling profiler correctly shows that *over the entire run*, we spend more time in `a`, but when chasing tail-latency issues, that is not what matters. Here, a tracing profiler is the right tool for the job.
+The sampling profiler correctly shows that *over the entire run*, we spend more time in `a`, but when chasing tail-latency issues, that is not what matters. Here, a tracing profiler is the right tool for the job and `b` is the right function to optimize.
 
 One small additional advantage of tracing is that it gives us a true time axis: events actually occur in the order shown, unlike in a sampled flame graph. This can be quite helpful when debugging.
 
@@ -108,7 +108,7 @@ Another event stream I'll mention here is thread-state changes and why tracking 
 
 But that isn't necessarily the case. Notice the light-green `Runnable` slice and the dark-green `Running` slice in the example above. That track shows that the Ruby thread was not running at first, later became runnable, and finally began executing. In this case the reason is fairly clear when you inspect the stack trace: the thread is in `sleep`, waiting on a `futex`, and in the yellow-and-purple `CPU 12` track you can see the Swapper process running on the core instead.
 
-But less obvious instanced exist as well: if the CPU you're running on is oversubscribed, the kernel scheduler may boop your thread off its core as it tries to give other threads time to run. If a code you own starts running slowly because someone else is stealing your cycles, you want to know!
+But less obvious instances exist as well: if the CPU you're running on is oversubscribed, the kernel scheduler may boop your thread off its core as it tries to give other threads time to run. If a code you own starts running slowly because someone else is stealing your cycles, you want to know!
 
 ## Future of the Project
 I'm currently focusing on another project, and the profiler isn't yet in a state where I'm comfortable letting others using it freely, but if you think it would be valuable to you, let me know and I'll bump it up on my project list!
