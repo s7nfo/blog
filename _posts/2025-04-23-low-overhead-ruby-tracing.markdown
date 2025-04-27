@@ -13,6 +13,12 @@ I’ve built what I think is a pretty neat Ruby tracing profiler. It captures fo
 
 As far as I know, no other Ruby tracer offers this mix of signals at this cost. If you’re aware of one, please let me know and I’ll add a note here! If you'd would like to try the profiler yourself, feel free to reach out!
 
+## Overhead Measurement
+
+![Overhead Measurement](/assets/ruby-profiler-histogram.png)
+
+Above is a runtime histogram of 200 runs of a [sample workload](https://gist.github.com/s7nfo/6b8c8df58d72775d246ccce4b4f5ad90) on an i5-13500 system running Ubuntu 24 compared to baseline Ruby and ruby-prof 1.7.1, the profiler that comes closest in terms of overhead. Estimated per-function-call overhead is +23ns for this profiler and +538ns for ruby-prof.
+
 ## Why Trace in Production
 In a word: outliers. Sampling profilers show where a program spends its time *on average*. However, issues like high tail latency are, by definition, poorly represented in an average view. That's where a tracing profiler comes in handy.
 
