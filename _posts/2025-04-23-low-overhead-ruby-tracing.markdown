@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "[WIP] Low Overhead Tracing Profiler for Ruby"
+title:  "Low Overhead Tracing Profiler for Ruby and Why You Might Want to Use it"
 ---
 
 > Note: this is a work-in-progress post, RSS betrayed me and let it out into the world before its time :)
@@ -115,4 +115,4 @@ But that isn't necessarily the case. Notice the light-green `Runnable` slice and
 But less obvious instances exist as well: if the CPU you're running on is oversubscribed, the kernel scheduler may boop your thread off its core as it tries to give other threads time to run. If a code you own starts running slowly because someone else is stealing your cycles, you want to know!
 
 ## Future of the Project
-I'm currently focusing on another project, and the profiler isn't yet in a state where I'm comfortable letting others using it freely, but if you think it would be valuable to you, let me know and I'll bump it up on my project list!
+I haven't open-sourced the code yet because it is very much in a proof-of-concept state and I'm busy with other projects. If you think it would be valuable to you, let me know. If I see enough interest I'll move it up my priority list.
