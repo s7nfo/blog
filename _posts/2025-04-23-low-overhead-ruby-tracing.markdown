@@ -1,15 +1,15 @@
 ---
 layout: post
-title:  "Very Low Overhead Tracing Profiler For Ruby"
+title:  "HUGLO: Hyper-Ultra-Giga Low-Overhead Tracing Profiler for Ruby"
 ---
-
-> Note: this is a work-in-progress post, RSS betrayed me and let it out into the world before its time :)
 
 ![Profiler Overview](/assets/ruby-profiler-overview.png)
 
 I’ve built what I think is a pretty neat Ruby tracing profiler. It captures four event streams: Ruby function calls, system calls, thread-state changes, and garbage-collection activity, while adding less than 30 ns of overhead per Ruby function call, low enough for continuous use in large-scale production systems.
 
-As far as I know, no other Ruby tracer offers this mix of signals at this cost. If you’re aware of one, please let me know and I’ll add a note here! If you'd would like to try the profiler yourself, feel free to reach out!
+As far as I know, no other Ruby tracer offers this mix of signals at this cost. If you’re aware of one, please let me know and I’ll add a note here (and maybe remove a couple of adjectives from the title).
+
+I haven't open-sourced the code yet because it is very much in a proof-of-concept state and I'm busy with other projects. If you think it would be valuable to you, let me know. If I see enough interest I'll move it up my priority list.
 
 ## Overhead Measurement
 
@@ -113,6 +113,3 @@ Another event stream I'll mention here is thread-state changes and why tracking 
 But that isn't necessarily the case. Notice the light-green `Runnable` slice and the dark-green `Running` slice in the example above. That track shows that the Ruby thread was not running at first, later became runnable, and finally began executing. In this case the reason is fairly clear when you inspect the stack trace: the thread is in `sleep`, waiting on a `futex`, and in the yellow-and-purple `CPU 12` track you can see the Swapper process running on the core instead.
 
 But less obvious instances exist as well: if the CPU you're running on is oversubscribed, the kernel scheduler may boop your thread off its core as it tries to give other threads time to run. If a code you own starts running slowly because someone else is stealing your cycles, you want to know!
-
-## Future of the Project
-I haven't open-sourced the code yet because it is very much in a proof-of-concept state and I'm busy with other projects. If you think it would be valuable to you, let me know. If I see enough interest I'll move it up my priority list.
