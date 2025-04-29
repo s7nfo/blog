@@ -7,7 +7,7 @@ title:  "HUGLO: Hyper-Ultra-Giga Low-Overhead Tracing Profiler for Ruby"
 
 I’ve built what I think is a pretty neat Ruby tracing profiler. It captures four event streams: Ruby function calls, system calls, thread-state changes, and garbage-collection activity, while adding less than 30 ns of overhead per Ruby function call, low enough for continuous use in large-scale production systems.
 
-As far as I know, no other Ruby tracer offers this mix of signals at this cost. If you’re aware of one, please let me know and I’ll add a note here (and maybe remove a couple of adjectives from the title).
+As far as I know, no other Ruby tracer offers this mix of signals at this cost. If you’re aware of one, please let me know and I’ll add a note here (and remove a couple of adjectives from the title).
 
 I haven't open-sourced the code yet because it is very much in a proof-of-concept state and I'm busy with other projects. If you think it would be valuable to you, let me know. If I see enough interest I'll move it up my priority list.
 
