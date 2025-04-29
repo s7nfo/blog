@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Low Overhead Tracing Profiler for Ruby and Why You Might Want to Use it"
+title:  "Very Low Overhead Tracing Profiler For Ruby"
 ---
 
 > Note: this is a work-in-progress post, RSS betrayed me and let it out into the world before its time :)
